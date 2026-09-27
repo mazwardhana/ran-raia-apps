@@ -10,6 +10,15 @@ export const metadata: Metadata = {
   title: 'Raia - Investasi Ternak',
   description: 'Platform investasi ternak gotong royong: kelola paket ternak, pantau profit, dan likuiditas melalui secondary market.',
   keywords: ['investasi ternak', 'jasa gaduh', 'kambing etawa', 'sapi limosin', 'gotong royong'],
+  // PWA: biar bisa di-install dari homescreen.
+  manifest: '/manifest.json',
+  applicationName: 'Raia',
+  themeColor: '#0F766E',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'default',
+    title: 'Raia',
+  },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
