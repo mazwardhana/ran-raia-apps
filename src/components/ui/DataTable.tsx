@@ -2,7 +2,6 @@ import {
   ActionIcon,
   Box,
   Group,
-  Pagination,
   Paper,
   ScrollArea,
   Select,
@@ -84,7 +83,7 @@ export function DataTable<T extends Record<string, unknown>>({
   }, [debouncedSearch, onSearchChange]);
 
   const handleSort = (key: string) => {
-    const newDirection =
+    const newDirection: 'asc' | 'desc' =
       sortState?.key === key && sortState.direction === 'asc' ? 'desc' : 'asc';
     const newSort = { key, direction: newDirection };
     setSortState(newSort);

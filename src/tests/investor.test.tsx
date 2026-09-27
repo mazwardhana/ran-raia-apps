@@ -170,11 +170,11 @@ describe('Investor PWA Core', () => {
     // Setiap tujuan navigasi harus benar-benar punya halaman (bukan dead link)
     const { existsSync } = await import('node:fs');
     const pageFiles: Record<string, string> = {
-      '/app': 'src/app/(app)/page.tsx',
-      '/app/paket': 'src/app/(app)/paket/page.tsx',
-      '/app/portofolio': 'src/app/(app)/portofolio/page.tsx',
-      '/app/secondary': 'src/app/(app)/secondary/page.tsx',
-      '/app/profil': 'src/app/(app)/profil/page.tsx',
+      '/app': 'src/app/app/page.tsx',
+      '/app/paket': 'src/app/app/paket/page.tsx',
+      '/app/portofolio': 'src/app/app/portofolio/page.tsx',
+      '/app/secondary': 'src/app/app/secondary/page.tsx',
+      '/app/profil': 'src/app/app/profil/page.tsx',
     };
     for (const href of hrefs) {
       expect(href, 'href wajib ada').toBeTruthy();
@@ -200,7 +200,7 @@ describe('Investor PWA Core', () => {
   });
 
   it('dashboard renders metric cards with values, charts, and activity feed', async () => {
-    const Page = (await import('@/app/(app)/page')).default;
+    const Page = (await import('@/app/app/page')).default;
     const ui = await Page();
     renderWithTheme(ui);
 
@@ -226,7 +226,7 @@ describe('Investor PWA Core', () => {
   it('dashboard shows KYC banner when kycStatus is PENDING', async () => {
     state.kycStatus = 'PENDING';
 
-    const Page = (await import('@/app/(app)/page')).default;
+    const Page = (await import('@/app/app/page')).default;
     const ui = await Page();
     renderWithTheme(ui);
 
@@ -284,7 +284,7 @@ describe('Investor PWA Core', () => {
       });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const CatalogPage = (await import('@/app/(app)/paket/page')).default;
+    const CatalogPage = (await import('@/app/app/paket/page')).default;
     renderWithTheme(<CatalogPage />);
 
     await waitFor(() => {
@@ -322,7 +322,7 @@ describe('Investor PWA Core', () => {
       });
     global.fetch = fetchMock as unknown as typeof fetch;
 
-    const CatalogPage = (await import('@/app/(app)/paket/page')).default;
+    const CatalogPage = (await import('@/app/app/paket/page')).default;
     renderWithTheme(<CatalogPage />);
 
     expect(await screen.findByText('Terjadi kesalahan')).toBeInTheDocument();
@@ -374,7 +374,7 @@ describe('Investor PWA Core', () => {
       ],
     });
 
-    const Page = (await import('@/app/(app)/paket/[id]/page')).default;
+    const Page = (await import('@/app/app/paket/[id]/page')).default;
     const ui = await Page({ params: { id: 'pkg1' } });
     renderWithTheme(ui);
 
@@ -412,7 +412,7 @@ describe('Investor PWA Core', () => {
   });
 
   it('rendered UI does not hardcode widths above 360px (viewport 360px)', async () => {
-    const Page = (await import('@/app/(app)/page')).default;
+    const Page = (await import('@/app/app/page')).default;
     const ui = await Page();
     const { container } = renderWithTheme(ui);
     await waitFor(() => {

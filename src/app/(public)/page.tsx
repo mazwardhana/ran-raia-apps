@@ -61,7 +61,7 @@ export default async function LandingPage() {
     }));
   }
 
-  let packagesFromDb = await prisma.package.findMany({
+  const packagesFromDb = await prisma.package.findMany({
     where: { status: 'OPEN' },
     include: { siteProject: true },
     take: 3,

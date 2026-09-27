@@ -12,7 +12,6 @@ import { ChartCard } from '@/components/ui/ChartCard';
 import { DataTable } from '@/components/ui/DataTable';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
-import { LoadingState } from '@/components/ui/LoadingState';
 import { MetricCard } from '@/components/ui/MetricCard';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { STATUS_COLORS, StatusBadge } from '@/components/ui/StatusBadge';

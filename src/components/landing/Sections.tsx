@@ -9,7 +9,7 @@ export function Hero() {
     <Box py={{ base: 60, md: 80 }} style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <Container size="lg">
         <Stack gap="xl" align="center" ta="center">
-          <Title order={1} c="white" size={{ base: 32, md: 48 }} fw={700}>
+          <Title order={1} c="white" size={48} fw={700}>
             Investasi Ternak Digital Transparan dan Aman
           </Title>
           <Text size="xl" c="white" maw={700}>
@@ -133,7 +133,7 @@ export function TestimonialsSection() {
               <Grid.Col key={i} span={{ base: 12, md: 4 }}>
                 <Card shadow="sm" padding="lg" radius="md" h="100%">
                   <Stack gap="md">
-                    <Text size="sm" style={{ fontStyle: 'italic' }}>"{testimonial.quote}"</Text>
+                    <Text size="sm" style={{ fontStyle: 'italic' }}>&ldquo;{testimonial.quote}&rdquo;</Text>
                     <Box>
                       <Text fw={600} size="sm">{testimonial.name}</Text>
                       <Text size="xs" c="dimmed">{testimonial.role}</Text>
@@ -174,7 +174,7 @@ export function FinalCta() {
     <Box py={60} style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}>
       <Container size="lg">
         <Stack gap="xl" align="center" ta="center">
-          <Title order={2} c="white" size={{ base: 28, md: 40 }}>
+          <Title order={2} c="white" size={40}>
             Siap Mulai Investasi Ternak?
           </Title>
           <Text size="lg" c="white" maw={600}>
