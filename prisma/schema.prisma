@@ -1,0 +1,523 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ======================
+// ENUMS
+// ======================
+
+enum Role {
+  ADMIN
+  OPERATOR
+  INVESTOR
+}
+
+enum KycStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+enum AnimalType {
+  KAMBING
+  SAPI
+}
+
+enum PackageStatus {
+  DRAFT
+  OPEN
+  RUNNING
+  CLOSED
+  SOLD_OUT
+}
+
+enum TransactionType {
+  BUY
+  SELL
+  PAYOUT
+  TAAWUN_CLAIM
+  TAKEOVER
+}
+
+enum TransactionStatus {
+  PENDING
+  PAID
+  EXPIRED
+  CANCELLED
+  REFUNDED
+}
+
+enum CostType {
+  ANIMAL
+  TAAWUN
+  RENT
+  FEED
+  LABOR
+  MEDICINE
+  OPERATIONAL
+}
+
+enum OwnershipType {
+  FULL
+  LOT
+}
+
+enum ListingStatus {
+  ACTIVE
+  SOLD
+  EXPIRED
+  TAKEOVER
+  CANCELLED
+}
+
+enum EventType {
+  BIRTH
+  MATING
+  HEALTH_CHECK
+  MILK
+  SALE
+  DEATH
+  VACCINATION
+  WEIGHT_LOG
+}
+
+enum ClaimStatus {
+  SUBMITTED
+  APPROVED
+  PAID
+  REJECTED
+}
+
+enum WithdrawalStatus {
+  PENDING
+  APPROVED
+  PAID
+  REJECTED
+}
+
+// ======================
+// USER AUTH
+// ======================
+
+model User {
+  id            String    @id @default(cuid())
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  name          String
+  phone         String?
+  role          Role      @default(INVESTOR)
+  kycStatus     KycStatus @default(PENDING)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  // Relations
+  profile           UserProfile?
+  transactions      Transaction[]
+  lotOwnerships    LotOwnership[]
+  fullOwnerships    FullOwnership[]
+  withdrawals       Withdrawal[]
+  secondaryListings SecondaryListing[]
+  investorBalance   InvestorBalance?
+  notifications     Notification[]
+
+  @@index([email])
+  @@index([username])
+  @@index([role])
+  @@index([kycStatus])
+}
+
+model UserProfile {
+  id          String  @id @default(cuid())
+  userId      String  @unique
+  user        User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  avatarUrl   String?
+  idNumber    String?
+  address     String?
+  bankName    String?
+  bankAccount String?
+  bankHolder  String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+// ======================
+// SITE PROJECT
+// ======================
+
+model SiteProject {
+  id            String   @id @default(cuid())
+  code          String   @unique
+  name          String
+  legalEntity   String   @unique // 1 site = 1 PT
+  legalNumber   String?
+  npwp          String?
+  address       String
+  province      String
+  city          String
+  village       String
+  contactPerson String?
+  contactPhone  String?
+  description   String?
+  coverImage    String?
+  capacity      Int      @default(2500) // kapasitas ternak
+  status        String   @default("ACTIVE") // ACTIVE, NONAKTIF
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  // Relations
+  packages Package[]
+
+  @@index([province])
+  @@index([city])
+  @@index([status])
+}
+
+// ======================
+// PACKAGE
+// ======================
+
+model Package {
+  id                    String         @id @default(cuid())
+  code                  String         @unique
+  title                 String
+  animalType            AnimalType
+  siteProjectId         String
+  siteProject           SiteProject    @relation(fields: [siteProjectId], references: [id])
+  periodMonths          Int
+  price                 Int            // harga paket utuh (dalam rupiah, tanpa desimal)
+  lotPrice              Int            @default(10000) // harga 1 lot
+  totalLots             Int
+  soldLots              Int            @default(0)
+  status                PackageStatus  @default(DRAFT)
+  coverImage            String?
+  description           String?
+  estimatedRoi          Int?           // persen
+  estimatedOffspring    Int?
+  estimatedOffspringPrice Int?
+  estimatedMilkMonthly   Int?           // liter
+  estimatedMilkPrice    Int?           // per liter
+  startDate             DateTime?
+  endDate               DateTime?
+  maxInvestors          Int            @default(100)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+
+  // Relations
+  costs             PackageCost[]
+  transactions      Transaction[]
+  livestocks        Livestock[]
+  profitDistributions ProfitDistribution[]
+  taawunClaims      TaawunClaim[]
+
+  @@index([status])
+  @@index([animalType])
+  @@index([siteProjectId])
+}
+
+model PackageCost {
+  id          String   @id @default(cuid())
+  packageId   String
+  package     Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
+  costType    CostType
+  amount      Int      // dalam rupiah
+  description String?
+  createdAt   DateTime @default(now())
+
+  @@index([packageId])
+}
+
+// ======================
+// TRANSACTION & OWNERSHIP
+// ======================
+
+model Transaction {
+  id              String            @id @default(cuid())
+  orderId         String            @unique
+  userId          String
+  user            User              @relation(fields: [userId], references: [id])
+  packageId       String
+  package         Package            @relation(fields: [packageId], references: [id])
+  type            TransactionType
+  status          TransactionStatus  @default(PENDING)
+  amount          Int               // jumlah checkout dalam rupiah
+  adminFee        Int               @default(0)
+  lotCount        Int?              // untuk transaksi LOT
+  paymentChannel  String?
+  midtransOrderId String?           @unique
+  snapToken       String?
+  paidAt          DateTime?
+  expiredAt       DateTime?
+  createdAt       DateTime          @default(now())
+  updatedAt       DateTime          @updatedAt
+
+  // Relations
+  lotOwnership  LotOwnership?
+  fullOwnership FullOwnership?
+
+  @@index([userId])
+  @@index([packageId])
+  @@index([status])
+  @@index([midtransOrderId])
+}
+
+model LotOwnership {
+  id              String        @id @default(cuid())
+  transactionId   String        @unique
+  transaction     Transaction   @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User          @relation(fields: [userId], references: [id])
+  packageId      String
+  lotStart       Int           // mulai dari 1
+  lotEnd         Int           // sampai N
+  acquiredPrice  Int           // harga per lot saat beli
+  createdAt      DateTime      @default(now())
+
+  @@unique([packageId, userId])
+  @@index([userId])
+  @@index([packageId])
+}
+
+model FullOwnership {
+  id             String      @id @default(cuid())
+  transactionId  String      @unique
+  transaction    Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  userId        String
+  user          User        @relation(fields: [userId], references: [id])
+  packageId     String
+  acquiredPrice Int
+  createdAt     DateTime    @default(now())
+
+  @@index([userId])
+  @@index([packageId])
+}
+
+// ======================
+// LIVESTOCK
+// ======================
+
+model Livestock {
+  id          String     @id @default(cuid())
+  packageId   String
+  package     Package    @relation(fields: [packageId], references: [id])
+  tagNumber   String     @unique
+  name        String?
+  sex         String     // JANTAN, BETINA
+  breed       String?
+  birthDate   DateTime?
+  weightKg    Float?
+  motherTag   String?
+  status      String     @default("ACTIVE") // ACTIVE, DEAD, SOLD
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  events  LivestockEvent[]
+  milkLogs MilkLog[]
+
+  @@index([packageId])
+  @@index([status])
+}
+
+model LivestockEvent {
+  id          String    @id @default(cuid())
+  livestockId String
+  livestock   Livestock @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+  eventType   EventType
+  eventDate   DateTime
+  description String?
+  quantity    Int?
+  unitValue  Int?
+  photos      String[]  // array URL
+  reportedBy String?
+  createdAt  DateTime  @default(now())
+
+  @@index([livestockId])
+  @@index([eventDate])
+}
+
+model MilkLog {
+  id           String   @id @default(cuid())
+  livestockId  String
+  livestock    Livestock @relation(fields: [livestockId], references: [id], onDelete: Cascade)
+  logDate      DateTime
+  morningLt    Float?
+  eveningLt    Float?
+  totalLt      Float?
+  fatPercent   Float?
+  proteinPercent Float?
+  createdAt    DateTime @default(now())
+
+  @@index([livestockId])
+  @@index([logDate])
+}
+
+// ======================
+// PROFIT & BALANCE
+// ======================
+
+model ProfitDistribution {
+  id          String   @id @default(cuid())
+  packageId   String
+  package     Package  @relation(fields: [packageId], references: [id])
+  source      String   // OFFSPRING, MILK
+  grossAmount Int
+  raiaShare   Int
+  investorShare Int
+  period      String   // misal "2025-Q1" atau "2025-01"
+  status      String   @default("PENDING") // PENDING, DISTRIBUTED
+  note        String?
+  distributedAt DateTime?
+  createdAt   DateTime @default(now())
+
+  @@index([packageId])
+  @@index([period])
+}
+
+model InvestorBalance {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  availableBalance  Int      @default(0) // dalam rupiah
+  withdrawnBalance  Int      @default(0)
+  totalEarned      Int      @default(0)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+}
+
+model Withdrawal {
+  id        String           @id @default(cuid())
+  userId    String
+  user      User             @relation(fields: [userId], references: [id])
+  amount    Int
+  bankName  String
+  bankAccount String
+  bankHolder String
+  status    WithdrawalStatus @default(PENDING)
+  note      String?
+  paidAt    DateTime?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@index([userId])
+  @@index([status])
+}
+
+// ======================
+// TAAWUN
+// ======================
+
+model TaawunClaim {
+  id          String      @id @default(cuid())
+  packageId   String
+  package     Package     @relation(fields: [packageId], references: [id])
+  livestockId String?
+  claimAmount Int
+  reason      String?
+  status      ClaimStatus @default(SUBMITTED)
+  evidence    String?     // URL foto/video
+  approvedAt  DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@index([packageId])
+  @@index([status])
+}
+
+// ======================
+// SECONDARY MARKET
+// ======================
+
+model SecondaryListing {
+  id              String        @id @default(cuid())
+  sellerId        String
+  seller         User          @relation(fields: [sellerId], references: [id])
+  packageId      String
+  ownershipType  OwnershipType
+  lotStart       Int?          // untuk LOT
+  lotEnd         Int?
+  listingPrice   Int           // selalu par
+  status         ListingStatus @default(ACTIVE)
+  listedAt       DateTime      @default(now())
+  expiresAt      DateTime
+  soldAt         DateTime?
+  takeoverByRaia Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  sale SecondarySale?
+
+  @@index([status])
+  @@index([sellerId])
+  @@index([expiresAt])
+}
+
+model SecondarySale {
+  id              String           @id @default(cuid())
+  listingId       String           @unique
+  listing        SecondaryListing @relation(fields: [listingId], references: [id], onDelete: Cascade)
+  buyerId         String
+  adminFee        Int              @default(0)
+  finalPrice      Int
+  soldAt          DateTime         @default(now())
+}
+
+// ======================
+// ARTICLES
+// ======================
+
+model Article {
+  id              String   @id @default(cuid())
+  slug            String   @unique
+  title           String
+  excerpt         String?
+  content         String   @db.Text
+  coverImage      String?
+  authorName      String?
+  publishedAt     DateTime?
+  viewCount       Int      @default(0)
+  metaTitle       String?
+  metaDescription String?
+  keywords        String[] // array string
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([publishedAt])
+}
+
+// ======================
+// NOTIFICATIONS
+// ======================
+
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // PAYMENT, PROFIT, KYC, LISTING, TAAWUN
+  title     String
+  body      String
+  data      String?  // JSON payload
+  isRead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@index([userId, isRead])
+  @@index([createdAt])
+}
+
+// ======================
+// SETTINGS
+// ======================
+
+model Setting {
+  id    String @id
+  value String
+  updatedAt DateTime @updatedAt
+}
