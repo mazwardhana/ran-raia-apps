@@ -25,9 +25,10 @@ const withPWA = withPWAInit({
     },
     {
       // API aplikasi → coba jaringan dulu, baru cache.
+      // Kecuali API sensitif (auth, pembayaran, KYC) yang ditangani NetworkOnly di bawah.
       urlPattern: ({ url }) =>
         url.pathname.startsWith('/api/') &&
-        !/^\/api\/(auth|payments)/.test(url.pathname),
+        !/^\/api\/(auth|payments|kyc)/.test(url.pathname),
       handler: 'NetworkFirst',
       options: {
         cacheName: 'api-cache',
@@ -36,8 +37,8 @@ const withPWA = withPWAInit({
       },
     },
     {
-      // API sensitif (autentikasi & pembayaran) tidak pernah masuk cache.
-      urlPattern: ({ url }) => /^\/api\/(auth|payments)/.test(url.pathname),
+      // API sensitif (autentikasi, pembayaran & identitas/KYC) tidak pernah masuk cache.
+      urlPattern: ({ url }) => /^\/api\/(auth|payments|kyc)/.test(url.pathname),
       handler: 'NetworkOnly',
       // `options` wajib ada: next-pwa menelusuri c.options.precacheFallback
       // untuk setiap entri saat `fallbacks` dipakai, dan crash bila kosong.
