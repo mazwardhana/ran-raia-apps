@@ -115,6 +115,8 @@ export async function GET() {
           select: {
             packageId: true,
             ownershipType: true,
+            lotStart: true,
+            lotEnd: true,
           },
         }),
       ]);
@@ -135,8 +137,22 @@ export async function GET() {
       });
 
       const pkgMap = new Map(ownershipPackages.map((p) => [p.id, p]));
+      // LOT holdings accumulate, so the badge must identify the exact holding
+      // (package + lot range); otherwise listing one row lights up every row
+      // for that package. FULL stays package-wide — there is only one.
+      const listedKey = (
+        packageId: string,
+        ownershipType: 'FULL' | 'LOT',
+        lotStart: number | null,
+        lotEnd: number | null
+      ) =>
+        ownershipType === 'LOT'
+          ? `${packageId}-LOT-${lotStart}-${lotEnd}`
+          : `${packageId}-FULL`;
       const listedSet = new Set(
-        activeListings.map((l) => `${l.packageId}-${l.ownershipType}`)
+        activeListings.map((l) =>
+          listedKey(l.packageId, l.ownershipType, l.lotStart, l.lotEnd)
+        )
       );
 
       myAssets = [
@@ -152,7 +168,7 @@ export async function GET() {
             lotStart: o.lotStart,
             lotEnd: o.lotEnd,
             acquiredAt: o.createdAt.toISOString(),
-            listed: listedSet.has(`${o.packageId}-LOT`),
+            listed: listedSet.has(listedKey(o.packageId, 'LOT', o.lotStart, o.lotEnd)),
           };
         }),
         ...fullOwnerships.map((o): MyAsset => {
@@ -167,7 +183,7 @@ export async function GET() {
             lotStart: null,
             lotEnd: null,
             acquiredAt: o.createdAt.toISOString(),
-            listed: listedSet.has(`${o.packageId}-FULL`),
+            listed: listedSet.has(listedKey(o.packageId, 'FULL', null, null)),
           };
         }),
       ];

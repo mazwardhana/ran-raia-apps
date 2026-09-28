@@ -94,13 +94,17 @@ export async function POST(request: NextRequest) {
 
     const packagePrice = pkg.price;
 
-    // Check if already listed
+    // Check if already listed. LOT holdings accumulate, so a seller may hold
+    // several rows for one package and list each separately — the uniqueness
+    // check must be scoped to the exact holding (lotStart/lotEnd), not the
+    // package. FULL stays package-wide: only one 100% holding can exist.
     const existingListing = await prisma.secondaryListing.findFirst({
       where: {
         sellerId: user.id,
         packageId,
         ownershipType: type,
         status: 'ACTIVE',
+        ...(type === 'LOT' ? { lotStart, lotEnd } : {}),
       },
     });
 

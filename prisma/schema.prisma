@@ -283,7 +283,7 @@ model LotOwnership {
   acquiredPrice  Int           // harga per lot saat beli
   createdAt      DateTime      @default(now())
 
-  @@unique([packageId, userId])
+  @@index([packageId, userId])
   @@index([userId])
   @@index([packageId])
 }

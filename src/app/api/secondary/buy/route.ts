@@ -64,22 +64,10 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Check if buyer already owns this package (prevent duplicate ownership)
+    // Check if buyer already owns this package as FULL (prevent duplicate FULL ownership).
+    // LOT holdings may accumulate, so an existing lot row does not block a purchase.
     if (listing.ownershipType === 'FULL') {
       const existingOwnership = await prisma.fullOwnership.findFirst({
-        where: {
-          packageId: listing.packageId,
-          userId: user.id,
-        },
-      });
-      if (existingOwnership) {
-        return NextResponse.json(
-          { error: 'Anda sudah memiliki aset pada paket ini' },
-          { status: 400 }
-        );
-      }
-    } else {
-      const existingOwnership = await prisma.lotOwnership.findFirst({
         where: {
           packageId: listing.packageId,
           userId: user.id,
@@ -134,18 +122,24 @@ export async function POST(request: NextRequest) {
           });
         }
       } else {
+        if (listing.lotStart === null || listing.lotEnd === null) {
+          throw new Error('Listing lot tidak memiliki rentang lot');
+        }
         const ownership = await tx.lotOwnership.findFirst({
           where: {
             packageId: listing.packageId,
             userId: listing.sellerId,
+            lotStart: listing.lotStart,
+            lotEnd: listing.lotEnd,
           },
         });
-        if (ownership) {
-          await tx.lotOwnership.update({
-            where: { id: ownership.id },
-            data: { userId: user.id },
-          });
+        if (!ownership) {
+          throw new Error('Kepemilikan lot penjual tidak ditemukan');
         }
+        await tx.lotOwnership.update({
+          where: { id: ownership.id },
+          data: { userId: user.id },
+        });
       }
 
       // 3. Mark listing SOLD
