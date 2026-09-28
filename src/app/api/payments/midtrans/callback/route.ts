@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifySignature } from '@/lib/midtrans';
+import { releaseReservation } from '@/lib/reservations';
 
 export async function POST(request: NextRequest) {
   try {
@@ -94,10 +95,10 @@ export async function POST(request: NextRequest) {
     }
 
     if (transaction_status === 'deny' || transaction_status === 'cancel') {
-      await prisma.transaction.update({
-        where: { id: transaction.id },
-        data: { status: 'CANCELLED' },
-      });
+      // Lepas slot lot dan baris kepemilikan, bukan hanya statusnya.
+      await prisma.$transaction((tx) =>
+        releaseReservation(tx, transaction.id, 'CANCELLED')
+      );
 
       return NextResponse.json({
         status: 'cancelled',
@@ -106,10 +107,9 @@ export async function POST(request: NextRequest) {
     }
 
     if (transaction_status === 'expire') {
-      await prisma.transaction.update({
-        where: { id: transaction.id },
-        data: { status: 'EXPIRED' },
-      });
+      await prisma.$transaction((tx) =>
+        releaseReservation(tx, transaction.id, 'EXPIRED')
+      );
 
       return NextResponse.json({
         status: 'expired',

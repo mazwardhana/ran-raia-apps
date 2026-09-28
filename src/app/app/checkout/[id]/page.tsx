@@ -195,7 +195,29 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         return;
       }
 
-      if (window.snap?.pay) {
+      // Hanya navigasi bila redirectUrl berupa string non-kosong; selain itu
+      // pengguna ditawarkan tautan yang bisa diklik (tidak ada /undefined).
+      const redirectUrl =
+        typeof data.redirectUrl === 'string' && data.redirectUrl.trim() !== ''
+          ? data.redirectUrl
+          : null;
+
+      if (data.simulate) {
+        // Mode simulasi: tanpa Snap, langsung ke halaman simulasi internal.
+        if (!redirectUrl) {
+          setSubmitError('Halaman simulasi pembayaran tidak tersedia.');
+          return;
+        }
+        setFallbackUrl(redirectUrl);
+        try {
+          window.location.href = redirectUrl;
+        } catch {
+          // jsdom / browser menolak navigasi: link fallback tersedia
+        }
+        return;
+      }
+
+      if (window.snap?.pay && data.snapToken) {
         window.snap.pay(data.snapToken, {
           onSuccess: () => setPaid(true),
           onPending: () => setPaid(true),
@@ -204,14 +226,19 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
           onClose: () =>
             setSubmitError('Pembayaran dibatalkan. Pesanan Anda masih menunggu pembayaran.'),
         });
-      } else {
-        // Fallback: arahkan ke halaman pembayaran Midtrans
-        setFallbackUrl(data.redirectUrl);
-        try {
-          window.location.href = data.redirectUrl;
-        } catch {
-          // jsdom / browser menolak navigasi: link fallback tersedia
-        }
+        return;
+      }
+
+      if (!redirectUrl) {
+        setSubmitError('Halaman pembayaran tidak tersedia.');
+        return;
+      }
+
+      setFallbackUrl(redirectUrl);
+      try {
+        window.location.href = redirectUrl;
+      } catch {
+        // jsdom / browser menolak navigasi: link fallback tersedia
       }
     } catch {
       setSubmitError('Terjadi kesalahan jaringan. Coba lagi.');
@@ -284,15 +311,18 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
 
       {submitError && (
         <Alert icon={<IconAlertCircle size={16} />} color="red" title="Checkout gagal">
-          {submitError}
+          <Group gap="xs">
+            <span>{submitError}</span>
+            <Link href="/app/transaksi">Lihat transaksi saya</Link>
+          </Group>
         </Alert>
       )}
 
       {fallbackUrl && (
         <Alert icon={<IconInfoCircle size={16} />} color="blue" title="Pembayaran online">
-          Tidak dapat membuka jendela pembayaran otomatis.{' '}
+          Tidak dapat membuka halaman pembayaran otomatis.{' '}
           <a href={fallbackUrl} target="_blank" rel="noreferrer">
-            Buka halaman pembayaran Midtrans
+            Buka halaman pembayaran
           </a>
         </Alert>
       )}

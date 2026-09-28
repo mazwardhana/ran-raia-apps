@@ -3,7 +3,12 @@ import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { checkoutSchema } from '@/lib/validation';
 import { calcLotOrder } from '@/lib/calculations';
-import { createSnapToken } from '@/lib/midtrans';
+import { createSnapToken, isSimulateMode } from '@/lib/midtrans';
+import {
+  calcLotRange,
+  expireStaleTransactions,
+  releaseReservation,
+} from '@/lib/reservations';
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,6 +27,10 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
+
+    // Lepaskan slot dari pesanan yang sudah kedaluwarsa sebelum menghitung
+    // ketersediaan (pola yang sama dengan expireStaleListings).
+    await expireStaleTransactions();
 
     const body = await request.json();
     const validation = checkoutSchema.safeParse(body);
@@ -155,8 +164,7 @@ export async function POST(request: NextRequest) {
           },
         });
       } else {
-        const lotStart = pkg.soldLots - requestedLots + 1;
-        const lotEnd = pkg.soldLots;
+        const { lotStart, lotEnd } = calcLotRange(pkg.soldLots, requestedLots);
 
         await tx.lotOwnership.create({
           data: {
@@ -173,34 +181,60 @@ export async function POST(request: NextRequest) {
       return transaction;
     });
 
-    const snapToken = await createSnapToken({
-      orderId: midtransOrderId,
-      grossAmount: totalAmount,
-      itemDetails: [
-        {
-          id: pkg.code,
-          name: pkg.title,
-          price: ownershipType === 'FULL' ? pkg.price : pkg.lotPrice,
-          quantity: ownershipType === 'FULL' ? 1 : requestedLots,
+    if (isSimulateMode()) {
+      // Mode simulasi: lewati Midtrans, arahkan ke halaman simulasi internal.
+      return NextResponse.json({
+        orderId: result.orderId,
+        snapToken: null,
+        redirectUrl: `/app/bayar-simulasi/${result.orderId}`,
+        total: totalAmount,
+        simulate: true,
+      });
+    }
+
+    try {
+      const snapToken = await createSnapToken({
+        orderId: midtransOrderId,
+        grossAmount: totalAmount,
+        itemDetails: [
+          {
+            id: pkg.code,
+            name: pkg.title,
+            price: ownershipType === 'FULL' ? pkg.price : pkg.lotPrice,
+            quantity: ownershipType === 'FULL' ? 1 : requestedLots,
+          },
+        ],
+        customerDetails: {
+          first_name: user.username,
+          email: '',
         },
-      ],
-      customerDetails: {
-        first_name: user.username,
-        email: '',
-      },
-    });
+      });
 
-    await prisma.transaction.update({
-      where: { id: result.id },
-      data: { snapToken: snapToken.token },
-    });
+      await prisma.transaction.update({
+        where: { id: result.id },
+        data: { snapToken: snapToken.token },
+      });
 
-    return NextResponse.json({
-      orderId: result.orderId,
-      snapToken: snapToken.token,
-      redirectUrl: snapToken.redirect_url,
-      total: totalAmount,
-    });
+      return NextResponse.json({
+        orderId: result.orderId,
+        snapToken: snapToken.token,
+        redirectUrl: snapToken.redirect_url,
+        total: totalAmount,
+        simulate: false,
+      });
+    } catch (snapError) {
+      // Slot sudah terlanjur kebagian pada pesanan ini; lepaskan lagi supaya
+      // tidak bocor saat token gagal dibuat.
+      console.error('Gagal membuat sesi pembayaran Midtrans:', snapError);
+      await prisma.$transaction((tx) =>
+        releaseReservation(tx, result.id, 'CANCELLED')
+      );
+
+      return NextResponse.json(
+        { error: 'Gagal membuat sesi pembayaran. Slot Anda telah dikembalikan, silakan coba lagi.' },
+        { status: 502 }
+      );
+    }
   } catch (error) {
     console.error('Checkout error:', error);
 

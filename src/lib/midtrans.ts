@@ -33,6 +33,16 @@ export interface SnapTokenResponse {
   redirect_url: string;
 }
 
+/**
+ * Mode simulasi pembayaran dikendalikan env `MIDTRANS_MODE`.
+ * Hanya nilai `simulate` yang menyalakan mode ini; selain itu (termasuk
+ * ketika tidak diset) checkout tetap memakai Midtrans sungguhan.
+ * Dibaca saat dipanggil, bukan saat modul dimuat, supaya bisa diuji per kasus.
+ */
+export function isSimulateMode(): boolean {
+  return process.env.MIDTRANS_MODE === 'simulate';
+}
+
 export async function createSnapToken(
   params: CreateSnapTokenParams
 ): Promise<SnapTokenResponse> {
