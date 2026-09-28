@@ -41,3 +41,6 @@ prisma/migrations/
 
 # docker
 docker-compose.override.yml
+
+# kyc
+data/kyc/

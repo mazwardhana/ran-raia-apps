@@ -145,6 +145,8 @@ model UserProfile {
   bankName    String?
   bankAccount String?
   bankHolder  String?
+  ktpImagePath    String?
+  selfieImagePath String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 }
