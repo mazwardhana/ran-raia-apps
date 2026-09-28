@@ -23,6 +23,31 @@ export function contentTypeForPath(storedPath: string): string {
 }
 
 /**
+ * Signature/magic bytes yang wajib ada di awal berkas.
+ * PNG: 89 50 4E 47 0D 0A 1A 0A · JPEG: FF D8 FF
+ */
+const PNG_MAGIC = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a];
+const JPEG_MAGIC = [0xff, 0xd8, 0xff];
+
+export type SniffedImageType = 'image/png' | 'image/jpeg';
+
+/**
+ * Menebak tipe gambar dari byte pertamanya (bukan dari MIME yang dinyatakan
+ * klien). Mengembalikan null bila bukan PNG maupun JPEG.
+ */
+export function sniffImageType(bytes: Uint8Array): SniffedImageType | null {
+  if (bytes.length >= PNG_MAGIC.length && PNG_MAGIC.every((byte, index) => bytes[index] === byte)) {
+    return 'image/png';
+  }
+
+  if (bytes.length >= JPEG_MAGIC.length && JPEG_MAGIC.every((byte, index) => bytes[index] === byte)) {
+    return 'image/jpeg';
+  }
+
+  return null;
+}
+
+/**
  * Direktori penyimpanan foto KTP, sengaja di luar `public/` supaya berkas
  * tidak bisa diambil publik lewat URL. Di kontainer nilainya `/app/data/kyc`.
  */
@@ -33,16 +58,18 @@ export function getKycStorageDir(): string {
 /**
  * Menyimpan foto memakai nama tetap per pengguna & jenis foto. Nama berkas
  * dari klien tidak pernah dipakai, sehingga aman dari path traversal.
+ * Ekstensi diambil dari `contentType` hasil sniffing byte, bukan MIME klien.
  * Mengembalikan path relatif terhadap direktori penyimpanan.
  */
 export async function saveKycPhoto(
   userId: string,
   type: KycPhotoType,
-  file: File
+  file: File,
+  contentType: SniffedImageType
 ): Promise<string> {
-  const extension = extensionForImageType(file.type);
+  const extension = extensionForImageType(contentType);
   if (!extension) {
-    throw new Error(`Tipe gambar tidak didukung: ${file.type}`);
+    throw new Error(`Tipe gambar tidak didukung: ${contentType}`);
   }
 
   const dir = getKycStorageDir();

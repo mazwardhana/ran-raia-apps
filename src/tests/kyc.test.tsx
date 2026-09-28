@@ -438,6 +438,25 @@ describe('POST /api/kyc — penyimpanan foto KTP', () => {
     expect(readdirSync(storageDir)).toHaveLength(0);
   });
 
+  it('menolak file yang mengaku PNG tetapi isinya bukan gambar (magic bytes salah)', async () => {
+    // Tipe MIME dinyatakan klien = image/png, tapi byte pertamanya bukan signature PNG.
+    const spoofed = new Uint8Array(16).fill(0x41);
+
+    const res = await kycPOST(
+      kycRequest(VALID_FIELDS, [
+        file('ktpImage', 'ktp.png', 'image/png', spoofed),
+        file('selfieImage', 'selfie.png', 'image/png', PNG_BYTES),
+      ])
+    );
+
+    expect(res.status).toBe(400);
+    const json = await res.json();
+    expect(json.error).toBeTruthy();
+    expect(apiMocks.prisma.userProfile.upsert).not.toHaveBeenCalled();
+    expect(apiMocks.prisma.user.update).not.toHaveBeenCalled();
+    expect(readdirSync(storageDir)).toHaveLength(0);
+  });
+
   it('menolak permintaan tanpa payload KYC yang valid', async () => {
     // 1) tidak ada field sama sekali
     const empty = await kycPOST(kycRequest([], []));

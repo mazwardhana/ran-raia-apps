@@ -27,21 +27,35 @@ dan ke `teknoloka-network` (agar dijangkau `teknoloka-nginx`).
 | --- | --- | --- |
 | `DATABASE_URL` | Ya | URL koneksi PostgreSQL. Boleh memakai host `ran-postgres:5432` **atau** `127.0.0.1:5432`; skrip menormalkan hostnya sendiri (kontainer memakai `ran-postgres:5432`, migrasi host memakai `127.0.0.1:5432`). |
 | `AUTH_SECRET` | Ya | Rahasia sesi NextAuth. |
-| `NEXT_PUBLIC_APP_URL` | Ya | Mis. `https://ran.teknoloka.id`. |
+| `NEXT_PUBLIC_APP_URL` | Ya | Mis. `https://ran.teknoloka.id`. Dipakai juga sebagai nilai bawaan `AUTH_URL`. |
+| `AUTH_URL` | Ya* | URL publik aplikasi, mis. `https://ran.teknoloka.id`. *Bila kosong, skrip memakai `NEXT_PUBLIC_APP_URL`, lalu `https://ran.teknoloka.id`. Tanpa ini login NextAuth rusak. |
+| `AUTH_TRUST_HOST` | Ya* | Harus `true` karena aplikasi berjalan di belakang reverse proxy nginx. *Bila kosong, skrip memakai `true`. |
+| `MIDTRANS_SERVER_KEY` | Ya (pembayaran) | Kunci server Midtrans. Tanpa ini pembayaran server-side gagal. |
+| `MIDTRANS_IS_PRODUCTION` | Disarankan | `true` untuk produksi, `false`/kosong untuk sandbox. |
+| `MIDTRANS_CLIENT_KEY` | Disarankan | Kunci klien Midtrans versi server; dipakai juga sebagai cadangan `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`. |
 | `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` | Disarankan | Kunci klien Midtrans (dibundel ke browser). Bila kosong, skrip jatuh ke `MIDTRANS_CLIENT_KEY`. |
-| `MIDTRANS_CLIENT_KEY` | Opsional | Cadangan untuk `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`. |
-| `MIDTRANS_SERVER_KEY` | Opsional | Hanya diteruskan ke kontainer. |
 | `MIDTRANS_MODE` | Opsional | Mis. `simulate` / `production`. Tambahkan sendiri; skrip meneruskan semua kunci `KEY=VALUE` secara generik. |
+
+> Kontainer `ran-app` saat ini membawa env berikut; pastikan semuanya ada di
+> `.env.production.local` agar tidak hilang saat deploy:
+> `AUTH_URL`, `AUTH_TRUST_HOST`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`,
+> `MIDTRANS_IS_PRODUCTION`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` (selain `DATABASE_URL`,
+> `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`). `AUTH_URL` dan `AUTH_TRUST_HOST` punya nilai bawaan,
+> tetapi kunci Midtrans **tidak** — tanpa kunci itu pembayaran akan rusak.
 
 Contoh:
 
 ```sh
 DATABASE_URL="postgresql://raia:raia_password@ran-postgres:5432/raia"
 AUTH_SECRET="ganti-dengan-rahasia-panjang"
+AUTH_URL="https://ran.teknoloka.id"
+AUTH_TRUST_HOST="true"
 NEXT_PUBLIC_APP_URL="https://ran.teknoloka.id"
-NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="SB-Mid-client-xxxxxxxx"
-MIDTRANS_SERVER_KEY="SB-Mid-server-xxxxxxxx"
-MIDTRANS_MODE="simulate"
+MIDTRANS_SERVER_KEY="Mid-server-xxxxxxxx"
+MIDTRANS_CLIENT_KEY="Mid-client-xxxxxxxx"
+NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="Mid-client-xxxxxxxx"
+MIDTRANS_IS_PRODUCTION="true"
+MIDTRANS_MODE="production"
 ```
 
 Skrip membaca file ini **sebagai data**, bukan dengan `source`/`.`, jadi isinya tidak dieksekusi.
@@ -74,8 +88,10 @@ Urutan yang dijalankan:
 6. **Jaringan edge** — sambungkan `ran-app` ke `teknoloka-network` bila belum tersambung.
 7. **Uji kesehatan** — `https://ran.teknoloka.id/` dan `/api/packages` harus HTTP 200,
    diulang hingga 12 kali dengan jeda 5 detik.
-8. **Rollback otomatis** — bila uji kesehatan tidak pernah lulus, kontainer dijalankan kembali
-   dengan image `ran-app:previous` dan situs tidak dibiarkan 502. Skrip keluar dengan kode ≠ 0.
+8. **Rollback otomatis** — bila `docker run` gagal, sambungan ke `teknoloka-network` gagal, **atau**
+   uji kesehatan tidak pernah lulus, kontainer dijalankan kembali dengan image `ran-app:previous`
+   (dan disambungkan ulang ke edge) sehingga situs tidak dibiarkan 502. Skrip selalu keluar dengan
+   kode ≠ 0 bila rollback terjadi.
 
 Variabel yang bisa ditimpa saat memanggil: `ENV_FILE` (lokasi file env), `APP_URL`.
 

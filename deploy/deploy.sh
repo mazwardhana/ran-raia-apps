@@ -141,7 +141,7 @@ build_args() {
 
 # --- Argumen runtime kontainer ------------------------------------------------
 build_run_env() {
-  local runtime_db_url k
+  local runtime_db_url auth_url k
 
   runtime_db_url="$(rewrite_db_host "$(env_get DATABASE_URL)" "ran-postgres:5432")"
   [[ -n "$runtime_db_url" ]] || die "Gagal menurunkan DATABASE_URL runtime dari '$ENV_FILE'."
@@ -154,6 +154,23 @@ build_run_env() {
     RUN_ENV+=(-e "$k=${ENV_MAP[$k]}")
   done
   RUN_ENV+=(-e "DATABASE_URL=$runtime_db_url")
+
+  # Nilai bawaan agar kontainer tidak kehilangan env penting yang tidak ditulis di file.
+  # AUTH_URL dan AUTH_TRUST_HOST wajib ada agar login NextAuth bekerja di belakang nginx.
+  if ! env_has AUTH_URL; then
+    auth_url="$(env_get NEXT_PUBLIC_APP_URL)"
+    [[ -n "$auth_url" ]] || auth_url="$APP_URL"
+    RUN_ENV+=(-e "AUTH_URL=$auth_url")
+    warn "AUTH_URL tidak ada di '$ENV_FILE'; memakai nilai bawaan '$auth_url'."
+  fi
+  if ! env_has AUTH_TRUST_HOST; then
+    RUN_ENV+=(-e "AUTH_TRUST_HOST=true")
+    warn "AUTH_TRUST_HOST tidak ada di '$ENV_FILE'; memakai nilai bawaan 'true'."
+  fi
+
+  if ! env_has MIDTRANS_SERVER_KEY && ! env_has MIDTRANS_CLIENT_KEY; then
+    warn "MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY tidak ada di '$ENV_FILE'; pembayaran server-side akan gagal. Tambahkan kunci Midtrans ke file."
+  fi
 }
 
 # --- Kontainer dan jaringan ---------------------------------------------------
@@ -174,11 +191,18 @@ ensure_edge_network() {
 
 start_container() {
   local image="$1"
-  docker run -d --name "$CONTAINER" --restart unless-stopped --network "$APP_NET" \
+  if ! docker run -d --name "$CONTAINER" --restart unless-stopped --network "$APP_NET" \
     -v ran_kycdata:/app/data/kyc \
     "${RUN_ENV[@]}" \
-    "$image"
-  ensure_edge_network
+    "$image"; then
+    warn "Gagal menjalankan kontainer '$CONTAINER' dengan image '$image'."
+    return 1
+  fi
+  if ! ensure_edge_network; then
+    warn "Gagal menyambungkan '$CONTAINER' ke '$EDGE_NET'."
+    return 1
+  fi
+  return 0
 }
 
 # --- Uji kesehatan ------------------------------------------------------------
@@ -217,7 +241,10 @@ rollback() {
 
   warn "Mengembalikan ke '$PREVIOUS_IMAGE'."
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  start_container "$PREVIOUS_IMAGE"
+  if ! start_container "$PREVIOUS_IMAGE"; then
+    warn "Rollback gagal: kontainer '$PREVIOUS_IMAGE' tidak bisa dijalankan. Perbaiki segera secara manual (lihat deploy/README.md)."
+    exit 1
+  fi
   if wait_healthy; then
     warn "Rollback selesai; situs kembali dilayani '$PREVIOUS_IMAGE'."
   else
@@ -253,7 +280,10 @@ main() {
 
   log "Mengganti kontainer '$CONTAINER' dengan image baru"
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
-  start_container "$IMAGE"
+  if ! start_container "$IMAGE"; then
+    warn "Kontainer baru gagal dijalankan atau gagal tersambung ke jaringan edge."
+    rollback
+  fi
 
   log "Menguji kesehatan $APP_URL"
   if ! wait_healthy; then

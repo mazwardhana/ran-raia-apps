@@ -1,4 +1,4 @@
-import { extensionForImageType } from './storage';
+import { extensionForImageType, sniffImageType, type SniffedImageType } from './storage';
 
 export const MAX_KYC_IMAGE_BYTES = 5 * 1024 * 1024;
 
@@ -44,18 +44,33 @@ export function validateKycText(form: FormData): string | null {
   return null;
 }
 
+export type KycImageValidation =
+  | { ok: true; contentType: SniffedImageType }
+  | { ok: false; error: string };
+
 /**
- * Validasi satu berkas foto di sisi server: hanya JPEG/PNG dan maksimal 5 MB.
- * Mengembalikan pesan kesalahan berbahasa Indonesia, atau null bila sah.
+ * Validasi satu berkas foto di sisi server: hanya JPEG/PNG (dicek dari magic
+ * bytes, bukan hanya MIME dari klien) dan maksimal 5 MB. Tipe yang
+ * dikembalikan adalah hasil sniffing byte, dipakai untuk ekstensi & penyajian.
  */
-export function validateKycImage(file: File, label: string): string | null {
+export async function validateKycImage(
+  file: File,
+  label: string
+): Promise<KycImageValidation> {
   if (!extensionForImageType(file.type)) {
-    return `${label} hanya boleh berformat JPEG atau PNG.`;
+    return { ok: false, error: `${label} hanya boleh berformat JPEG atau PNG.` };
   }
 
   if (file.size > MAX_KYC_IMAGE_BYTES) {
-    return `${label} melebihi batas 5 MB.`;
+    return { ok: false, error: `${label} melebihi batas 5 MB.` };
   }
 
-  return null;
+  const header = new Uint8Array(await file.slice(0, 8).arrayBuffer());
+  const contentType = sniffImageType(header);
+
+  if (!contentType) {
+    return { ok: false, error: `${label} bukan gambar JPEG atau PNG yang valid.` };
+  }
+
+  return { ok: true, contentType };
 }

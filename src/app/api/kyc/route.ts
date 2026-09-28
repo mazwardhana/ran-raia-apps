@@ -44,24 +44,24 @@ export async function POST(request: NextRequest) {
   if (!ktpImage) {
     return NextResponse.json({ error: 'Foto KTP wajib diunggah.' }, { status: 400 });
   }
-  const ktpError = validateKycImage(ktpImage, 'Foto KTP');
-  if (ktpError) {
-    return NextResponse.json({ error: ktpError }, { status: 400 });
+  const ktpCheck = await validateKycImage(ktpImage, 'Foto KTP');
+  if (!ktpCheck.ok) {
+    return NextResponse.json({ error: ktpCheck.error }, { status: 400 });
   }
 
   const selfieImage = asUploadedFile(form.get('selfieImage'));
   if (!selfieImage) {
     return NextResponse.json({ error: 'Foto selfie wajib diunggah.' }, { status: 400 });
   }
-  const selfieError = validateKycImage(selfieImage, 'Foto selfie');
-  if (selfieError) {
-    return NextResponse.json({ error: selfieError }, { status: 400 });
+  const selfieCheck = await validateKycImage(selfieImage, 'Foto selfie');
+  if (!selfieCheck.ok) {
+    return NextResponse.json({ error: selfieCheck.error }, { status: 400 });
   }
 
   try {
     const [ktpImagePath, selfieImagePath] = await Promise.all([
-      saveKycPhoto(user.id, 'ktp', ktpImage),
-      saveKycPhoto(user.id, 'selfie', selfieImage),
+      saveKycPhoto(user.id, 'ktp', ktpImage, ktpCheck.contentType),
+      saveKycPhoto(user.id, 'selfie', selfieImage, selfieCheck.contentType),
     ]);
 
     await prisma.userProfile.upsert({
