@@ -40,7 +40,10 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: 'Foto tidak ditemukan.' }, { status: 404 });
   }
 
-  return new NextResponse(bytes, {
+  // Buffer Node tidak assignable ke BodyInit DOM. Salinan Uint8Array
+  // (ArrayBuffer-backed) menyalin byte apa adanya, jadi berkas yang disajikan
+  // tetap identik dengan yang tersimpan.
+  return new NextResponse(new Uint8Array(bytes), {
     status: 200,
     headers: {
       'Content-Type': contentTypeForPath(storedPath),

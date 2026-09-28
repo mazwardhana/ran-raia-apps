@@ -319,7 +319,9 @@ function kycRequest(fields: UploadField[], files: UploadFile[]): NextRequest {
   return new NextRequest('http://localhost/api/kyc', {
     method: 'POST',
     headers: { 'content-type': `multipart/form-data; boundary=${BOUNDARY}` },
-    body: multipartBody(fields, files),
+    // Uint8Array Node tidak assignable ke BodyInit DOM; salinan Uint8Array
+    // (ArrayBuffer-backed) menyalin byte apa adanya tanpa mengubah isinya.
+    body: new Uint8Array(multipartBody(fields, files)),
   });
 }
 
