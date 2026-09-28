@@ -28,8 +28,8 @@ APP_URL="${APP_URL:-https://ran.teknoloka.id}"
 HEALTH_RETRIES=12
 HEALTH_DELAY=5
 
-# Wajib ada di .env.production.local.
-REQUIRED_KEYS=(DATABASE_URL AUTH_SECRET NEXT_PUBLIC_APP_URL)
+# Wajib ada di .env.production.local. Deploy ditolak bila salah satu kosong.
+REQUIRED_KEYS=(DATABASE_URL AUTH_SECRET MIDTRANS_SERVER_KEY MIDTRANS_CLIENT_KEY)
 
 log() { printf '\n[deploy] %s\n' "$*"; }
 warn() { printf '[deploy] PERINGATAN: %s\n' "$*" >&2; }
@@ -95,17 +95,16 @@ check_prerequisites() {
 
   load_env_file "$ENV_FILE"
 
-  if ! env_has DATABASE_URL; then
-    die "DATABASE_URL kosong atau tidak ada di '$ENV_FILE'. Tanpa itu kontainer baru tidak bisa menjangkau database. Kunci wajib: ${REQUIRED_KEYS[*]}."
-  fi
-
+  # Fail-fast seperti DATABASE_URL: satu kunci wajib yang kosong berarti deploy akan
+  # menimpa kontainer yang sedang bekerja dengan kontainer tanpa kredensial (mis. tanpa
+  # kunci pembayaran), jadi berhenti SEBELUM menyentuh Docker apa pun.
   local missing=()
   local k
   for k in "${REQUIRED_KEYS[@]}"; do
     env_has "$k" || missing+=("$k")
   done
   if (( ${#missing[@]} > 0 )); then
-    warn "Kunci berikut tidak ada/ kosong di '$ENV_FILE': ${missing[*]}. Lanjut dengan nilai bawaan bila tersedia."
+    die "Kunci wajib berikut kosong atau tidak ada di '$ENV_FILE': ${missing[*]}. Isi dulu kunci tersebut sebelum deploy — tanpa itu kontainer baru akan berjalan tanpa kredensial pembayaran/database dan pembayaran di produksi akan rusak. Kunci wajib: ${REQUIRED_KEYS[*]}."
   fi
 
   local net
@@ -168,8 +167,9 @@ build_run_env() {
     warn "AUTH_TRUST_HOST tidak ada di '$ENV_FILE'; memakai nilai bawaan 'true'."
   fi
 
-  if ! env_has MIDTRANS_SERVER_KEY && ! env_has MIDTRANS_CLIENT_KEY; then
-    warn "MIDTRANS_SERVER_KEY dan MIDTRANS_CLIENT_KEY tidak ada di '$ENV_FILE'; pembayaran server-side akan gagal. Tambahkan kunci Midtrans ke file."
+  if ! env_has MIDTRANS_IS_PRODUCTION; then
+    RUN_ENV+=(-e "MIDTRANS_IS_PRODUCTION=false")
+    warn "MIDTRANS_IS_PRODUCTION tidak ada di '$ENV_FILE'; memakai nilai bawaan 'false' (mode sandbox, sama dengan kontainer yang sedang berjalan)."
   fi
 }
 

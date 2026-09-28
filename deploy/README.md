@@ -21,41 +21,54 @@ dan ke `teknoloka-network` (agar dijangkau `teknoloka-nginx`).
 - Jaringan `teknoloka-network` sudah ada (dibuat oleh nginx/edge).
 - File `.env.production.local` ada di akar repo (di-ignore git, **jangan** di-commit).
 
-### Kunci wajib di `.env.production.local`
+### Kunci di `.env.production.local`
+
+Empat kunci ini **wajib**. Bila salah satu kosong, `deploy.sh` berhenti dengan kode ≠ 0 sebelum
+menyentuh Docker apa pun — tidak ada deploy yang bisa menghapus kredensial pembayaran dari kontainer.
 
 | Kunci | Wajib | Keterangan |
 | --- | --- | --- |
-| `DATABASE_URL` | Ya | URL koneksi PostgreSQL. Boleh memakai host `ran-postgres:5432` **atau** `127.0.0.1:5432`; skrip menormalkan hostnya sendiri (kontainer memakai `ran-postgres:5432`, migrasi host memakai `127.0.0.1:5432`). |
-| `AUTH_SECRET` | Ya | Rahasia sesi NextAuth. |
-| `NEXT_PUBLIC_APP_URL` | Ya | Mis. `https://ran.teknoloka.id`. Dipakai juga sebagai nilai bawaan `AUTH_URL`. |
-| `AUTH_URL` | Ya* | URL publik aplikasi, mis. `https://ran.teknoloka.id`. *Bila kosong, skrip memakai `NEXT_PUBLIC_APP_URL`, lalu `https://ran.teknoloka.id`. Tanpa ini login NextAuth rusak. |
-| `AUTH_TRUST_HOST` | Ya* | Harus `true` karena aplikasi berjalan di belakang reverse proxy nginx. *Bila kosong, skrip memakai `true`. |
-| `MIDTRANS_SERVER_KEY` | Ya (pembayaran) | Kunci server Midtrans. Tanpa ini pembayaran server-side gagal. |
-| `MIDTRANS_IS_PRODUCTION` | Disarankan | `true` untuk produksi, `false`/kosong untuk sandbox. |
-| `MIDTRANS_CLIENT_KEY` | Disarankan | Kunci klien Midtrans versi server; dipakai juga sebagai cadangan `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`. |
-| `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` | Disarankan | Kunci klien Midtrans (dibundel ke browser). Bila kosong, skrip jatuh ke `MIDTRANS_CLIENT_KEY`. |
-| `MIDTRANS_MODE` | Opsional | Mis. `simulate` / `production`. Tambahkan sendiri; skrip meneruskan semua kunci `KEY=VALUE` secara generik. |
+| `DATABASE_URL` | **Ya** | URL koneksi PostgreSQL. Boleh memakai host `ran-postgres:5432` **atau** `127.0.0.1:5432`; skrip menormalkan hostnya sendiri (kontainer memakai `ran-postgres:5432`, migrasi host memakai `127.0.0.1:5432`). |
+| `AUTH_SECRET` | **Ya** | Rahasia sesi NextAuth. |
+| `MIDTRANS_SERVER_KEY` | **Ya** | Kunci server Midtrans. Tanpa ini pembayaran server-side gagal, jadi skrip menolak deploy. |
+| `MIDTRANS_CLIENT_KEY` | **Ya** | Kunci klien Midtrans (nilai yang sama dengan `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`). |
 
-> Kontainer `ran-app` saat ini membawa env berikut; pastikan semuanya ada di
-> `.env.production.local` agar tidak hilang saat deploy:
-> `AUTH_URL`, `AUTH_TRUST_HOST`, `MIDTRANS_SERVER_KEY`, `MIDTRANS_CLIENT_KEY`,
-> `MIDTRANS_IS_PRODUCTION`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` (selain `DATABASE_URL`,
-> `AUTH_SECRET`, `NEXT_PUBLIC_APP_URL`). `AUTH_URL` dan `AUTH_TRUST_HOST` punya nilai bawaan,
-> tetapi kunci Midtrans **tidak** — tanpa kunci itu pembayaran akan rusak.
+Kunci berikut **punya nilai bawaan** — boleh tidak ditulis di file, skrip mengisinya sendiri dan
+mencetak peringatan berisi nilai yang diasumsikan:
+
+| Kunci | Wajib | Nilai bawaan |
+| --- | --- | --- |
+| `AUTH_URL` | Tidak (di-default) | `NEXT_PUBLIC_APP_URL` bila ada, selain itu `https://ran.teknoloka.id`. |
+| `AUTH_TRUST_HOST` | Tidak (di-default) | `true` (wajib `true` di belakang nginx). |
+| `MIDTRANS_IS_PRODUCTION` | Tidak (di-default) | `false` — mode sandbox, sama dengan kontainer `ran-app` yang sedang berjalan. |
+| `NEXT_PUBLIC_APP_URL` | Tidak (di-default) | `https://ran.teknoloka.id`; dipakai sebagai build-arg dan sumber nilai `AUTH_URL`. |
+
+Kunci build-only:
+
+| Kunci | Wajib | Keterangan |
+| --- | --- | --- |
+| `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` | Tidak | Kunci klien yang dibundel ke browser. Bila kosong, skrip jatuh ke `MIDTRANS_CLIENT_KEY` (yang sudah wajib, jadi build selalu punya kunci klien). |
+| `MIDTRANS_MODE` | Tidak | Mis. `simulate` / `production`. Tambahkan sendiri; skrip meneruskan semua kunci `KEY=VALUE` secara generik. |
+
+> Kontainer `ran-app` saat ini membawa `AUTH_URL`, `AUTH_TRUST_HOST`, `MIDTRANS_SERVER_KEY`,
+> `MIDTRANS_CLIENT_KEY`, `MIDTRANS_IS_PRODUCTION`, `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`,
+> `NEXT_PUBLIC_APP_URL`, `DATABASE_URL`, `AUTH_SECRET`. Karena `.env.production.local` berisi
+> **hanya** `AUTH_SECRET` hari ini, `deploy.sh` akan **menolak berjalan** sampai keempat kunci wajib
+> (termasuk dua kunci Midtrans) diisi. Itu memang disengaja: kontainer lama tidak boleh diganti
+> dengan kontainer yang kehilangan kredensial pembayaran.
 
 Contoh:
 
 ```sh
 DATABASE_URL="postgresql://raia:raia_password@ran-postgres:5432/raia"
 AUTH_SECRET="ganti-dengan-rahasia-panjang"
-AUTH_URL="https://ran.teknoloka.id"
-AUTH_TRUST_HOST="true"
-NEXT_PUBLIC_APP_URL="https://ran.teknoloka.id"
 MIDTRANS_SERVER_KEY="Mid-server-xxxxxxxx"
 MIDTRANS_CLIENT_KEY="Mid-client-xxxxxxxx"
 NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="Mid-client-xxxxxxxx"
-MIDTRANS_IS_PRODUCTION="true"
-MIDTRANS_MODE="production"
+MIDTRANS_IS_PRODUCTION="false"
+AUTH_URL="https://ran.teknoloka.id"
+AUTH_TRUST_HOST="true"
+NEXT_PUBLIC_APP_URL="https://ran.teknoloka.id"
 ```
 
 Skrip membaca file ini **sebagai data**, bukan dengan `source`/`.`, jadi isinya tidak dieksekusi.
