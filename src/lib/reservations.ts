@@ -24,9 +24,13 @@ export function calcLotRange(soldLots: number, requestedLots: number): LotRange 
 /**
  * Lepas satu reservasi pesanan yang masih PENDING.
  *
- * Mengembalikan slot lot (`soldLots`), menghapus baris kepemilikan milik
- * pesanan itu, lalu menyetel statusnya. Idempoten: pemanggilan kedua tidak
- * berpengaruh karena status sudah bukan PENDING lagi.
+ * Mengembalikan slot lot (`soldLots`) dan menghapus baris kepemilikan milik
+ * pesanan itu. Idempoten bahkan **bila dipanggil bersamaan**: gerbangnya adalah
+ * `updateMany` ber-predikat `status: 'PENDING'`, yang dievaluasi Postgres
+ * terhadap versi baris terbaru setelah kunci baris dibebaskan — jadi hanya satu
+ * pemanggil yang dapat `count === 1` dan melanjutkan ke decrement. Pemanggil
+ * lain yang kalah langsung keluar tanpa menyentuh `soldLots`, sehingga tidak
+ * pernah ada pelepasan ganda (oversell).
  *
  * Harus dipanggil dengan Prisma transaction client supaya perubahan slot dan
  * status tidak terpisah.
@@ -45,7 +49,19 @@ export async function releaseReservation(
     },
   });
 
+  // Pra-pengecekan murah: hemat satu update untuk pemanggil berikutnya yang
+  // datang setelah pesanan selesai. Bukan jaminan — yang memutuskan gerbang di
+  // bawah, karena `findUnique` ini bisa membaca versi basi di bawah READ COMMITTED.
   if (!transaction || transaction.status !== 'PENDING') return;
+
+  // Gerbang atomik: klaim eksklusif atas pesanan PENDING ini. Harus berada
+  // sebelum decrement apa pun agar pembalap yang kalah tidak pernah melepas slot.
+  const claimed = await tx.transaction.updateMany({
+    where: { id: transactionId, status: 'PENDING' },
+    data: { status: finalStatus },
+  });
+
+  if (claimed.count !== 1) return;
 
   // Untuk pembelian FULL, lotCount bernilai null sehingga slot yang dipegang
   // adalah seluruh totalLots paket.
@@ -62,11 +78,6 @@ export async function releaseReservation(
 
   await tx.lotOwnership.deleteMany({ where: { transactionId } });
   await tx.fullOwnership.deleteMany({ where: { transactionId } });
-
-  await tx.transaction.update({
-    where: { id: transactionId },
-    data: { status: finalStatus },
-  });
 }
 
 /**

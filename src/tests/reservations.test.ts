@@ -25,6 +25,7 @@ const mocks = vi.hoisted(() => {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     package: {
       findUnique: vi.fn(),
@@ -165,6 +166,8 @@ beforeEach(() => {
   vi.mocked(verifySignature).mockReturnValue(true);
   mocks.prisma.setting.findUnique.mockResolvedValue(null);
   mocks.prisma.transaction.findMany.mockResolvedValue([]);
+  // Gerbang atomik: jalur normal selalu menemukan baris berstatus PENDING.
+  mocks.tx.transaction.updateMany.mockResolvedValue({ count: 1 });
   delete process.env.MIDTRANS_MODE;
   // Banyak kasus ini sengaja memicu jalur galat; jaga agar keluaran tes bersih.
   vi.spyOn(console, 'error').mockImplementation(() => {});
@@ -225,9 +228,9 @@ describe('POST /api/checkout — kebocoran slot saat createSnapToken gagal', () 
       data: { soldLots: { decrement: 5 } },
     });
 
-    // status transaksi menjadi CANCELLED
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'trx_1' },
+    // status transaksi menjadi CANCELLED lewat gerbang atomik
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_1', status: 'PENDING' },
       data: { status: 'CANCELLED' },
     });
 
@@ -292,9 +295,9 @@ describe('releaseReservation', () => {
       state.soldLots -= data.soldLots.decrement;
       return {};
     });
-    mocks.tx.transaction.update.mockImplementation(async ({ data }: any) => {
+    mocks.tx.transaction.updateMany.mockImplementation(async ({ data }: any) => {
       state.status = data.status;
-      return {};
+      return { count: 1 };
     });
 
     await releaseReservation(mocks.tx as any, 'trx_1');
@@ -302,7 +305,7 @@ describe('releaseReservation', () => {
 
     expect(mocks.tx.package.update).toHaveBeenCalledTimes(1);
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledTimes(1);
-    expect(mocks.tx.transaction.update).toHaveBeenCalledTimes(1);
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledTimes(1);
     expect(state.soldLots).toBe(5);
     expect(state.status).toBe('CANCELLED');
   });
@@ -316,7 +319,24 @@ describe('releaseReservation', () => {
 
     expect(mocks.tx.package.update).not.toHaveBeenCalled();
     expect(mocks.tx.lotOwnership.deleteMany).not.toHaveBeenCalled();
-    expect(mocks.tx.transaction.update).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('gerbang atomik: bila updateMany tidak menemukan baris PENDING, tidak ada yang dilepas', async () => {
+    // findUnique sengaja masih melihat PENDING (baca basi), tetapi gerbang
+    // atomik menemukan 0 baris karena pembalap sudah menyetel statusnya.
+    mocks.tx.transaction.findUnique.mockResolvedValue(pendingLotTransaction());
+    mocks.tx.transaction.updateMany.mockResolvedValue({ count: 0 });
+
+    await releaseReservation(mocks.tx as any, 'trx_1');
+
+    expect(mocks.tx.package.update).not.toHaveBeenCalled();
+    expect(mocks.tx.lotOwnership.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.fullOwnership.deleteMany).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_1', status: 'PENDING' },
+      data: { status: 'CANCELLED' },
+    });
   });
 });
 
@@ -369,8 +389,8 @@ describe('POST /api/payments/midtrans/callback', () => {
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 'trx_2' },
     });
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'trx_2' },
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_2', status: 'PENDING' },
       data: { status: 'EXPIRED' },
     });
   });
@@ -412,8 +432,8 @@ describe('POST /api/payments/midtrans/callback', () => {
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 'trx_3' },
     });
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'trx_3' },
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_3', status: 'PENDING' },
       data: { status: 'CANCELLED' },
     });
   });
@@ -480,8 +500,8 @@ describe('expireStaleTransactions', () => {
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 'stale_pending' },
     });
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'stale_pending' },
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'stale_pending', status: 'PENDING' },
       data: { status: 'EXPIRED' },
     });
   });
@@ -615,15 +635,43 @@ describe('POST /api/payments/simulate', () => {
     const json = await res.json();
     expect(json.status).toBe('success');
 
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith(
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { id: 'trx_6' },
+        where: { id: 'trx_6', status: 'PENDING' },
         data: expect.objectContaining({ status: 'PAID' }),
       })
     );
     expect(mocks.tx.investorBalance.upsert).toHaveBeenCalledWith(
       expect.objectContaining({ where: { userId: 'usr_1' } })
     );
+  });
+
+  it('menolak 409 bila gerbang atomik tidak menemukan pesanan masih PENDING', async () => {
+    process.env.MIDTRANS_MODE = 'simulate';
+    mocks.prisma.transaction.findUnique.mockResolvedValue({
+      id: 'trx_9',
+      orderId: 'TRX-9',
+      userId: 'usr_1',
+      packageId: 'pkg_1',
+      status: 'PENDING',
+      lotCount: 5,
+      amount: 50000,
+    });
+    // Pembalap (cancel) sudah menang: gerbang tidak menemukan baris PENDING.
+    mocks.tx.transaction.updateMany.mockResolvedValue({ count: 0 });
+
+    const res = await simulatePOST(
+      simulateRequest({ orderId: 'TRX-9', action: 'success' })
+    );
+
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toBeTruthy();
+    expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_9', status: 'PENDING' },
+      data: expect.objectContaining({ status: 'PAID' }),
+    });
   });
 
   it('menolak 404 untuk pesanan milik pengguna lain', async () => {
@@ -641,7 +689,7 @@ describe('POST /api/payments/simulate', () => {
     );
 
     expect(res.status).toBe(404);
-    expect(mocks.tx.transaction.update).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.updateMany).not.toHaveBeenCalled();
   });
 
   it('action cancel melepas slot lewat releaseReservation', async () => {
@@ -672,8 +720,8 @@ describe('POST /api/payments/simulate', () => {
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledWith({
       where: { transactionId: 'trx_8' },
     });
-    expect(mocks.tx.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'trx_8' },
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_8', status: 'PENDING' },
       data: { status: 'CANCELLED' },
     });
   });

@@ -6,6 +6,18 @@ import { prisma } from '@/lib/prisma';
 import { releaseReservation } from '@/lib/reservations';
 
 /**
+ * Dilempar di dalam `$transaction` ketika gerbang atomik tidak menemukan baris
+ * PENDING lagi (dibatalkan/sapuan oleh pemanggil lain). Membatalkan seluruh
+ * transaksi supaya tidak ada baris yang berubah setengah jadi.
+ */
+class PesananBerubahError extends Error {
+  constructor() {
+    super('PESANAN_BUKAN_PENDING_LAGI');
+    this.name = 'PesananBerubahError';
+  }
+}
+
+/**
  * POST /api/payments/simulate
  *
  * Menandai pesanan lunas / batal tanpa Midtrans, untuk demo offline.
@@ -73,27 +85,46 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    await prisma.$transaction(async (tx) => {
-      await tx.transaction.update({
-        where: { id: transaction.id },
-        data: {
-          status: 'PAID',
-          paidAt: new Date(),
-          paymentChannel: 'SIMULATE',
-        },
-      });
+    // Gerbang atomik: jangan pernah menulis PAID tanpa memastikan baris masih
+    // PENDING. `updateMany` ber-predikat status inilah yang memutuskan, bukan
+    // pengecekan di atas — di bawah READ COMMITTED keduanya bisa lolos.
+    try {
+      await prisma.$transaction(async (tx) => {
+        const claimed = await tx.transaction.updateMany({
+          where: { id: transaction.id, status: 'PENDING' },
+          data: {
+            status: 'PAID',
+            paidAt: new Date(),
+            paymentChannel: 'SIMULATE',
+          },
+        });
 
-      await tx.investorBalance.upsert({
-        where: { userId: transaction.userId },
-        create: {
-          userId: transaction.userId,
-          availableBalance: 0,
-          withdrawnBalance: 0,
-          totalEarned: 0,
-        },
-        update: {},
+        if (claimed.count !== 1) {
+          // Pembalap (mis. cancel) sudah menyetel status dan melepas slotnya.
+          // Batalkan transaksi; jangan kredit saldo di atas pesanan yang batal.
+          throw new PesananBerubahError();
+        }
+
+        await tx.investorBalance.upsert({
+          where: { userId: transaction.userId },
+          create: {
+            userId: transaction.userId,
+            availableBalance: 0,
+            withdrawnBalance: 0,
+            totalEarned: 0,
+          },
+          update: {},
+        });
       });
-    });
+    } catch (error) {
+      if (error instanceof PesananBerubahError) {
+        return NextResponse.json(
+          { error: 'Pesanan sudah tidak menunggu pembayaran' },
+          { status: 409 }
+        );
+      }
+      throw error;
+    }
 
     return NextResponse.json({
       status: 'success',
