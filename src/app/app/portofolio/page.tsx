@@ -32,7 +32,7 @@ export default async function PortofolioPage() {
     prisma.lotOwnership.findMany({ where: { userId: user.id } }),
     prisma.fullOwnership.findMany({ where: { userId: user.id } }),
     prisma.package.findMany(),
-    prisma.profitDistribution.findMany({ where: { userId: user.id } }),
+    prisma.profitDistribution.findMany(),
   ]);
 
   // package.findMany bisa mengembalikan paket di luar kepemilikan user,
@@ -43,8 +43,8 @@ export default async function PortofolioPage() {
   ]);
   const packageMap = new Map(
     allPackages
-      .filter((pkg: { id: string }) => ownedPackageIds.has(pkg.id))
-      .map((pkg: { id: string }) => [pkg.id, pkg])
+      .filter((pkg) => ownedPackageIds.has(pkg.id))
+      .map((pkg) => [pkg.id, pkg] as [string, typeof pkg])
   );
 
   const profitByPackage = new Map<string, number>();

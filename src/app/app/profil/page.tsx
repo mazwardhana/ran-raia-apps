@@ -179,7 +179,7 @@ function ProfilContent() {
         )}
 
         {editing && (
-          <form onSubmit={onSubmit} noValidate mt="md">
+          <form onSubmit={onSubmit} noValidate style={{ marginTop: 'var(--mantine-spacing-md)' }}>
             <Stack gap="md">
               <TextInput
                 label="Username Baru"

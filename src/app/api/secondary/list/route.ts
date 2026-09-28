@@ -4,6 +4,7 @@ import { OwnershipType } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
 import { calcListingExpiry } from '@/lib/calculations';
+import { createNotification } from '@/lib/notifications';
 
 /**
  * POST /api/secondary/list
@@ -133,6 +134,16 @@ export async function POST(request: NextRequest) {
         listedAt,
         expiresAt,
       },
+    });
+
+    await createNotification({
+      userId: user.id,
+      type: 'LISTING',
+      title: 'Aset berhasil ditawarkan',
+      body: `Listing ${
+        type === 'FULL' ? 'paket utuh' : `lot ${lotStart}-${lotEnd}`
+      } aktif di secondary market hingga ${expiresAt.toLocaleDateString('id-ID')}.`,
+      data: { listingId: listing.id, packageId },
     });
 
     return NextResponse.json({ listing }, { status: 201 });

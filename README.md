@@ -1,36 +1,151 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Raia — Investasi Ternak Berbasis Taawun
 
-## Getting Started
+Raia adalah Progressive Web App (PWA) untuk investasi ternak (sapi & kambing) dengan
+pola *taawun* (gotong royong). Investor membeli paket ternak secara utuh atau per lot,
+mengikuti perkembangan ternak, menerima pembagian profit, dan bisa menjual kembali
+asetnya lewat secondary market.
 
-First, run the development server:
+## Stack
+
+| Lapisan | Teknologi |
+| --- | --- |
+| Framework | Next.js 14 (App Router) + TypeScript |
+| UI | Mantine v7 |
+| Database | PostgreSQL 16 + Prisma ORM |
+| Auth | NextAuth v5 (credentials) |
+| Pembayaran | Midtrans (sandbox) |
+| Object storage | MinIO |
+| Reverse proxy | nginx (`ran.teknoloka.id`) |
+| Test | Vitest + Testing Library (jsdom) |
+| Deploy | Docker Compose |
+
+## Menjalankan Proyek
+
+### 1. Docker Compose (jalur utama)
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp .env.example .env          # lalu isi nilai-nilainya
+docker compose up -d --build
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Layanan yang naik:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+| Service | Port | Keterangan |
+| --- | --- | --- |
+| postgres | 5432 | Database `raia` (user `raia`) |
+| minio | 9000 / 9001 | Object storage (console di 9001) |
+| nextjs | 3000 | Aplikasi Next.js |
+| nginx | 80 / 443 | Reverse proxy ke `nextjs:3000` |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 2. Prisma: migrate & seed
 
-## Learn More
+Skema saat ini dipasangkan lewat `db push` (belum ada folder migrasi):
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npm run db:push      # prisma db push — sinkronkan skema ke database
+npm run db:seed      # tsx prisma/seed.ts — isi data demo
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+> Bila kelak sudah ada folder `prisma/migrations`, gunakan
+> `npm run db:migrate` (`prisma migrate dev`).
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### 3. Development lokal (tanpa Docker untuk app-nya)
 
-## Deploy on Vercel
+```bash
+npm install
+npm run dev           # http://localhost:3000
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Akun Demo
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Semua akun demo memakai password `password123` (lihat `prisma/seed.ts`).
+
+| Role | Username | Email |
+| --- | --- | --- |
+| Admin | `admin_raia` | admin@raia.id |
+| Operator | `operator_wilayah_1` | operator1@raia.id |
+| Operator | `operator_wilayah_2` | operator2@raia.id |
+| Investor | `budi_santoso` | budi@example.com |
+| Investor | `siti_nurhaliza` | siti@example.com |
+
+Masuk lewat `/login`, lalu pilih peran sesuai kebutuhan (admin/operator: panel
+`/op`, investor: `/app`).
+
+## Variabel Lingkungan
+
+Salin `.env.example` ke `.env`:
+
+| Variabel | Keterangan |
+| --- | --- |
+| `DATABASE_URL` | Koneksi PostgreSQL, contoh `postgresql://raia:raia_password@localhost:5432/raia` |
+| `AUTH_SECRET` | Rahasia NextAuth — `openssl rand -base64 32` |
+| `AUTH_URL` | URL publik aplikasi, mis. `http://localhost:3000` |
+| `MIDTRANS_SERVER_KEY` | Server key Midtrans (`SB-Mid-server-…` di sandbox) |
+| `MIDTRANS_CLIENT_KEY` | Client key Midtrans (`SB-Mid-client-…` di sandbox) |
+| `MIDTRANS_IS_PRODUCTION` | `false` untuk sandbox, `true` untuk production |
+| `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY` | Client key untuk SDK Snap di browser |
+| `MINIO_ENDPOINT` | Host MinIO (contoh `localhost`) |
+| `MINIO_PORT` | Port MinIO (contoh `9000`) |
+| `MINIO_ACCESS_KEY` | User MinIO |
+| `MINIO_SECRET_KEY` | Password MinIO |
+| `MINIO_BUCKET` | Nama bucket (`raia`) |
+| `NEXT_PUBLIC_APP_URL` | URL publik untuk SEO/canonical, default `http://localhost:3000` |
+
+## Midtrans (Sandbox)
+
+- Gunakan prefix key `SB-Mid-server-` dan `SB-Mid-client-` dari dashboard sandbox
+  Midtrans, dan sisipkan client key ke **kedua** `MIDTRANS_CLIENT_KEY` dan
+  `NEXT_PUBLIC_MIDTRANS_CLIENT_KEY`.
+- `MIDTRANS_IS_PRODUCTION="false"` — transaksi hanya simulasi, tidak ada dana nyata.
+- Notifikasi webhook Midtrans diarahkan ke `https://ran.teknoloka.id/api/payments/callback`
+  (atau path serupa di `src/app/api/payments`). Untuk pengujian lokal gunakan
+  IP tunnel (ngrok) karena Midtrans harus menjangkau URL publik.
+- Kartu uji resmi Midtrans: `4811 1111 1111 1114` (Visa), masa berlaku bebas,
+  CVC bebas.
+
+## Deploy `ran.teknoloka.id`
+
+1. Build & jalankan di server: `docker compose up -d --build`.
+2. Pastikan DNS `ran.teknoloka.id` menunjuk ke IP server.
+3. nginx (`nginx/nginx.conf`) sudah dikonfigurasi:
+   - `server_name ran.teknoloka.id`
+   - `proxy_pass http://nextjs:3000`
+   - `client_max_body_size 20M`
+4. HTTPS dengan certbot **di host** (bukan di container):
+   ```bash
+   certbot --nginx -d ran.teknoloka.id
+   ```
+   Certbot menambahkan blok `listen 443 ssl` + `ssl_certificate`; setelah itu
+   aktifkan redirect `return 301 https://$host$request_uri;` yang sudah dikomentari
+   di `nginx/nginx.conf`. Sertifikat tidak disimpan di repo.
+5. Set `AUTH_URL=https://ran.teknoloka.id` dan `NEXT_PUBLIC_APP_URL=https://ran.teknoloka.id`
+   di environment produksi.
+6. Database & seed di production: `npm run db:push && npm run db:seed`
+   (seed sengaja menghapus data turunan lalu mengisi ulang — jangan jalankan di DB produksi berisi data nyata).
+
+## Perintah Test & Build
+
+```bash
+npm test             # vitest run (semua test)
+npx vitest run src/tests/notifications.test.tsx   # satu file test
+npm run test:watch   # vitest mode watch
+npx tsc --noEmit     # type-check
+npm run lint         # eslint (next lint)
+npm run build        # production build (butuh DATABASE_URL aktif)
+```
+
+CI (`.github/workflows/ci.yml`) menjalankan urutan yang sama: `npm ci` →
+`prisma generate` + `db push` → `tsc --noEmit` → `vitest run` → `lint` → `build`,
+dengan service PostgreSQL 16.
+
+## Struktur Penting
+
+```
+src/app/api/          # Route handler (auth, checkout, payments, notifications, …)
+src/app/app/          # Dashboard investor (portofolio, notifikasi, checkout)
+src/app/op/           # Panel operator/admin
+src/lib/              # Helper (auth, prisma, notifications, midtrans)
+prisma/schema.prisma  # Skema database
+prisma/seed.ts        # Seed data demo
+nginx/nginx.conf      # Reverse proxy
+```

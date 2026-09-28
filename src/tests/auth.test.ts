@@ -74,7 +74,7 @@ describe('route protection', () => {
     const { middleware } = await import('@/middleware');
     const response = await middleware(
       new NextRequest('http://localhost/app'),
-      undefined as Parameters<typeof middleware>[1]
+      undefined as unknown as Parameters<typeof middleware>[1]
     );
 
     expect(response?.headers.get('location')).toBe('http://localhost/login');

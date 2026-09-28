@@ -3,6 +3,7 @@ import { z } from 'zod';
 
 import { requireRole } from '@/lib/auth';
 import { calcProfitSplit } from '@/lib/calculations';
+import { createNotification } from '@/lib/notifications';
 import { prisma } from '@/lib/prisma';
 
 /**
@@ -178,6 +179,47 @@ export async function POST(request: NextRequest) {
           distributedAt: new Date(),
         },
       });
+
+      // Beritahu investor pemilik paket ini (kueri sederhana: pemilik lot + utuh)
+      try {
+        const [pkg, lotOwners, fullOwners] = await Promise.all([
+          prisma.package.findUnique({
+            where: { id: updated.packageId },
+            select: { title: true, code: true },
+          }),
+          prisma.lotOwnership.findMany({
+            where: { packageId: updated.packageId },
+            select: { userId: true },
+          }),
+          prisma.fullOwnership.findMany({
+            where: { packageId: updated.packageId },
+            select: { userId: true },
+          }),
+        ]);
+
+        const investorIds = Array.from(
+          new Set([...lotOwners, ...fullOwners].map((o) => o.userId))
+        );
+
+        await Promise.all(
+          investorIds.map((userId) =>
+            createNotification({
+              userId,
+              type: 'PROFIT',
+              title: 'Profit dibagikan',
+              body: `${pkg?.title ?? 'Paket'} periode ${updated.period}: bagian investor Rp${updated.investorShare.toLocaleString('id-ID')} telah didistribusikan.`,
+              data: {
+                distributionId: updated.id,
+                packageId: updated.packageId,
+                period: updated.period,
+              },
+            })
+          )
+        );
+      } catch (notifyError) {
+        console.error('Gagal mengirim notifikasi profit:', notifyError);
+      }
+
       return NextResponse.json(updated);
     }
 

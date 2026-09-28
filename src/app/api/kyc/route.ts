@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 
 import { getCurrentUser } from '@/lib/auth';
+import { createNotification } from '@/lib/notifications';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
@@ -30,6 +31,13 @@ export async function POST() {
   await prisma.user.update({
     where: { id: user.id },
     data: { kycStatus: 'VERIFIED' },
+  });
+
+  await createNotification({
+    userId: user.id,
+    type: 'KYC',
+    title: 'KYC diverifikasi',
+    body: 'Identitas Anda telah disetujui. Fitur investasi kini terbuka penuh.',
   });
 
   return NextResponse.json({ verified: true });
