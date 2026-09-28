@@ -11,7 +11,6 @@ import {
   Text,
 } from '@mantine/core';
 import { IconCheck, IconDeviceFloppy } from '@tabler/icons-react';
-import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 
 interface SettingMeta {
@@ -105,8 +104,6 @@ function validate(
 }
 
 export function SettingsClient({ items }: { items: Array<{ key: string; value: string }> }) {
-  const router = useRouter();
-
   const [originals, setOriginals] = useState<Record<string, string>>(() =>
     Object.fromEntries(items.map((item) => [item.key, item.value]))
   );

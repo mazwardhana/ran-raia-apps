@@ -303,7 +303,7 @@ export function TernakView({ initial }: { initial: TernakInitial }) {
     { label: string; value: string }[]
   >([]);
   const [optionsLoading, setOptionsLoading] = useState(false);
-  const [optionsError, setOptionsError] = useState<string | null>(null);
+  const [, setOptionsError] = useState<string | null>(null);
 
   const [eventOpened, setEventOpened] = useState(false);
   const [milkOpened, setMilkOpened] = useState(false);

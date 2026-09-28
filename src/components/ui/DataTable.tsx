@@ -7,6 +7,11 @@ import {
   Select,
   Stack,
   Table,
+  TableTbody,
+  TableTd,
+  TableTh,
+  TableThead,
+  TableTr,
   TextInput,
 } from '@mantine/core';
 import { useDebouncedValue } from '@mantine/hooks';
@@ -136,10 +141,10 @@ export function DataTable<T extends Record<string, unknown>>({
       <Paper withBorder>
         <ScrollArea>
           <Table striped highlightOnHover style={{ minWidth: 360 }}>
-            <Table.Thead>
-              <Table.Tr>
+            <TableThead>
+              <TableTr>
                 {columns.map((column) => (
-                  <Table.Th key={String(column.accessorKey)}>
+                  <TableTh key={String(column.accessorKey)}>
                     {column.sortable ? (
                       <Group gap={4} wrap="nowrap">
                         <button
@@ -170,25 +175,25 @@ export function DataTable<T extends Record<string, unknown>>({
                     ) : (
                       column.header
                     )}
-                  </Table.Th>
+                  </TableTh>
                 ))}
-              </Table.Tr>
-            </Table.Thead>
-            <Table.Tbody>
+              </TableTr>
+            </TableThead>
+            <TableTbody>
               {data.map((row, index) => (
-                <Table.Tr
+                <TableTr
                   key={index}
                   onClick={() => onRowClick?.(row)}
                   style={onRowClick ? { cursor: 'pointer' } : undefined}
                 >
                   {columns.map((column) => (
-                    <Table.Td key={String(column.accessorKey)}>
+                    <TableTd key={String(column.accessorKey)}>
                       {String(row[column.accessorKey] ?? '')}
-                    </Table.Td>
+                    </TableTd>
                   ))}
-                </Table.Tr>
+                </TableTr>
               ))}
-            </Table.Tbody>
+            </TableTbody>
           </Table>
         </ScrollArea>
       </Paper>

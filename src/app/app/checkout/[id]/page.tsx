@@ -10,7 +10,6 @@ import {
   Group,
   List,
   NumberInput,
-  rem,
   SegmentedControl,
   SimpleGrid,
   Skeleton,
@@ -21,7 +20,6 @@ import {
 } from '@mantine/core';
 import { IconAlertCircle, IconCircleCheck, IconInfoCircle } from '@tabler/icons-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { formatRupiah } from '@/lib/calculations';
@@ -77,7 +75,6 @@ interface Issue {
 
 export default function CheckoutPage({ params }: { params: { id: string } }) {
   const { id } = params;
-  const router = useRouter();
 
   const [pkg, setPkg] = useState<PackageDetail | null>(null);
   const [kycStatus, setKycStatus] = useState<string | null>(null);

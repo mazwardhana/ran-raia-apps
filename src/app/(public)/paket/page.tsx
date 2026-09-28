@@ -1,4 +1,4 @@
-import { Badge, Box, Button, Card, Container, Divider, Grid, Group, Stack, Text, Title } from '@mantine/core';
+import { Badge, Box, Button, Card, Container, Divider, Grid, GridCol, Group, Stack, Text, Title } from '@mantine/core';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { generateSeo } from '@/lib/seo';
@@ -104,7 +104,7 @@ export default async function PaketPublicPage() {
 
         <Grid>
           {packages.map((pkg) => (
-            <Grid.Col key={pkg.code} span={{ base: 12, md: 6, lg: 4 }}>
+            <GridCol key={pkg.code} span={{ base: 12, md: 6, lg: 4 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
                   <Group justify="space-between">
@@ -180,7 +180,7 @@ export default async function PaketPublicPage() {
                   </Button>
                 </Stack>
               </Card>
-            </Grid.Col>
+            </GridCol>
           ))}
         </Grid>
 

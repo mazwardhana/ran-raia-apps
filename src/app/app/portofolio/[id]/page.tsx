@@ -7,6 +7,11 @@ import {
   SimpleGrid,
   Stack,
   Table,
+  TableTbody,
+  TableTd,
+  TableTh,
+  TableThead,
+  TableTr,
   Text,
   Title,
 } from '@mantine/core';
@@ -197,28 +202,28 @@ export default async function OwnershipDetailPage({
             {profits.length > 0 ? (
               <Box style={{ overflowX: 'auto' }}>
                 <Table>
-                  <Table.Thead>
-                    <Table.Tr>
-                      <Table.Th>Periode</Table.Th>
-                      <Table.Th>Sumber</Table.Th>
-                      <Table.Th ta="right">Bagi hasil</Table.Th>
-                      <Table.Th>Status</Table.Th>
-                    </Table.Tr>
-                  </Table.Thead>
-                  <Table.Tbody>
+                  <TableThead>
+                    <TableTr>
+                      <TableTh>Periode</TableTh>
+                      <TableTh>Sumber</TableTh>
+                      <TableTh ta="right">Bagi hasil</TableTh>
+                      <TableTh>Status</TableTh>
+                    </TableTr>
+                  </TableThead>
+                  <TableTbody>
                     {profits.map((profit) => (
-                      <Table.Tr key={profit.id}>
-                        <Table.Td>{profit.period}</Table.Td>
-                        <Table.Td>{profit.source}</Table.Td>
-                        <Table.Td ta="right">
+                      <TableTr key={profit.id}>
+                        <TableTd>{profit.period}</TableTd>
+                        <TableTd>{profit.source}</TableTd>
+                        <TableTd ta="right">
                           {formatRupiah(profit.investorShare)}
-                        </Table.Td>
-                        <Table.Td>
+                        </TableTd>
+                        <TableTd>
                           <StatusBadge status={profit.status} />
-                        </Table.Td>
-                      </Table.Tr>
+                        </TableTd>
+                      </TableTr>
                     ))}
-                  </Table.Tbody>
+                  </TableTbody>
                 </Table>
               </Box>
             ) : (

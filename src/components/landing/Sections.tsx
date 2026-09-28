@@ -1,4 +1,4 @@
-import { Anchor, Box, Button, Card, Container, Grid, Group, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Box, Button, Card, Container, Grid, GridCol, Group, Stack, Text, Title } from '@mantine/core';
 import { IconCheck, IconShieldCheck, IconTrendingUp, IconUsers } from '@tabler/icons-react';
 import Link from 'next/link';
 import type { Article } from '@prisma/client';
@@ -38,7 +38,7 @@ export function ValuePropositions() {
         <Title order={2} ta="center">Kenapa Investasi Ternak di Raia?</Title>
         <Grid>
           {VALUE_PROPS.map((prop, i) => (
-            <Grid.Col key={i} span={{ base: 12, sm: 6, md: 3 }}>
+            <GridCol key={i} span={{ base: 12, sm: 6, md: 3 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
                   <IconCheck size={32} color="#667eea" />
@@ -46,7 +46,7 @@ export function ValuePropositions() {
                   <Text size="sm" c="dimmed">{prop.description}</Text>
                 </Stack>
               </Card>
-            </Grid.Col>
+            </GridCol>
           ))}
         </Grid>
       </Stack>
@@ -101,7 +101,7 @@ export function WhyRaiaSection() {
         <Title order={2} ta="center">Diferensiasi Raia</Title>
         <Grid>
           {WHY_RAIA.map((item, i) => (
-            <Grid.Col key={i} span={{ base: 12, md: 4 }}>
+            <GridCol key={i} span={{ base: 12, md: 4 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
                   {i === 0 && <IconTrendingUp size={32} color="#667eea" />}
@@ -111,7 +111,7 @@ export function WhyRaiaSection() {
                   <Text size="sm" c="dimmed">{item.description}</Text>
                 </Stack>
               </Card>
-            </Grid.Col>
+            </GridCol>
           ))}
         </Grid>
       </Stack>
@@ -130,7 +130,7 @@ export function TestimonialsSection() {
           </Group>
           <Grid>
             {TESTIMONIALS.map((testimonial, i) => (
-              <Grid.Col key={i} span={{ base: 12, md: 4 }}>
+              <GridCol key={i} span={{ base: 12, md: 4 }}>
                 <Card shadow="sm" padding="lg" radius="md" h="100%">
                   <Stack gap="md">
                     <Text size="sm" style={{ fontStyle: 'italic' }}>&ldquo;{testimonial.quote}&rdquo;</Text>
@@ -140,7 +140,7 @@ export function TestimonialsSection() {
                     </Box>
                   </Stack>
                 </Card>
-              </Grid.Col>
+              </GridCol>
             ))}
           </Grid>
         </Stack>
@@ -203,7 +203,7 @@ export function FeaturedPackages({ packages }: { packages: PackageCardData[] }) 
         <Title order={2} ta="center">Paket Unggulan</Title>
         <Grid>
           {packages.slice(0, 3).map((pkg) => (
-            <Grid.Col key={pkg.code} span={{ base: 12, md: 4 }}>
+            <GridCol key={pkg.code} span={{ base: 12, md: 4 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
                   <Text fw={600} size="lg">{pkg.title}</Text>
@@ -224,7 +224,7 @@ export function FeaturedPackages({ packages }: { packages: PackageCardData[] }) 
                   </Button>
                 </Stack>
               </Card>
-            </Grid.Col>
+            </GridCol>
           ))}
         </Grid>
         <Group justify="center">
@@ -245,7 +245,7 @@ export function LatestArticles({ articles }: { articles: Article[] }) {
           <Title order={2} ta="center">Artikel Terbaru</Title>
           <Grid>
             {articles.slice(0, 3).map((article) => (
-              <Grid.Col key={article.slug} span={{ base: 12, md: 4 }}>
+              <GridCol key={article.slug} span={{ base: 12, md: 4 }}>
                 <Card shadow="sm" padding="lg" radius="md" h="100%" component={Link} href={`/artikel/${article.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <Stack gap="md">
                     <Text fw={600} size="md" lineClamp={2}>{article.title}</Text>
@@ -253,7 +253,7 @@ export function LatestArticles({ articles }: { articles: Article[] }) {
                     <Anchor component="span" size="sm">Baca selengkapnya →</Anchor>
                   </Stack>
                 </Card>
-              </Grid.Col>
+              </GridCol>
             ))}
           </Grid>
           <Group justify="center">

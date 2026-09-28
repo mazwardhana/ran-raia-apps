@@ -1,4 +1,4 @@
-import { Badge, Card, Container, Grid, Group, Stack, Text, Title } from '@mantine/core';
+import { Badge, Card, Container, Grid, GridCol, Group, Stack, Text, Title } from '@mantine/core';
 import Link from 'next/link';
 import { prisma } from '@/lib/prisma';
 import { generateSeo } from '@/lib/seo';
@@ -61,7 +61,7 @@ export default async function ArtikelListPage() {
 
         <Grid>
           {items.map((article) => (
-            <Grid.Col key={article.slug} span={{ base: 12, md: 6, lg: 4 }}>
+            <GridCol key={article.slug} span={{ base: 12, md: 6, lg: 4 }}>
               <Card
                 shadow="sm"
                 padding="lg"
@@ -87,7 +87,7 @@ export default async function ArtikelListPage() {
                   </Text>
                 </Stack>
               </Card>
-            </Grid.Col>
+            </GridCol>
           ))}
         </Grid>
 

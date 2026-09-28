@@ -39,6 +39,9 @@ const withPWA = withPWAInit({
       // API sensitif (autentikasi & pembayaran) tidak pernah masuk cache.
       urlPattern: ({ url }) => /^\/api\/(auth|payments)/.test(url.pathname),
       handler: 'NetworkOnly',
+      // `options` wajib ada: next-pwa menelusuri c.options.precacheFallback
+      // untuk setiap entri saat `fallbacks` dipakai, dan crash bila kosong.
+      options: {},
     },
     {
       // Halaman navigasi → coba jaringan dulu, fallback ke cache bila offline.

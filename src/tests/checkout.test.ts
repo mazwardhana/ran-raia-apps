@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { calcLotOrder } from '@/lib/calculations';
 import { checkoutSchema } from '@/lib/validation';
 import crypto from 'crypto';

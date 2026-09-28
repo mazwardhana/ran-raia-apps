@@ -9,6 +9,11 @@ import {
   SimpleGrid,
   Stack,
   Table,
+  TableTbody,
+  TableTd,
+  TableTh,
+  TableThead,
+  TableTr,
   Text,
   Title,
 } from '@mantine/core';
@@ -180,29 +185,29 @@ export default async function PackageDetailPage({
             </Text>
             <Box style={{ overflowX: 'auto' }}>
               <Table>
-                <Table.Thead>
-                  <Table.Tr>
-                    <Table.Th>Komponen</Table.Th>
-                    <Table.Th>Keterangan</Table.Th>
-                    <Table.Th ta="right">Jumlah</Table.Th>
-                  </Table.Tr>
-                </Table.Thead>
-                <Table.Tbody>
+                <TableThead>
+                  <TableTr>
+                    <TableTh>Komponen</TableTh>
+                    <TableTh>Keterangan</TableTh>
+                    <TableTh ta="right">Jumlah</TableTh>
+                  </TableTr>
+                </TableThead>
+                <TableTbody>
                   {pkg.costs.map((cost) => (
-                    <Table.Tr key={cost.costType}>
-                      <Table.Td>{COST_LABELS[cost.costType] || cost.costType}</Table.Td>
-                      <Table.Td c="dimmed">{cost.description || '—'}</Table.Td>
-                      <Table.Td ta="right">{formatRupiah(cost.amount)}</Table.Td>
-                    </Table.Tr>
+                    <TableTr key={cost.costType}>
+                      <TableTd>{COST_LABELS[cost.costType] || cost.costType}</TableTd>
+                      <TableTd c="dimmed">{cost.description || '—'}</TableTd>
+                      <TableTd ta="right">{formatRupiah(cost.amount)}</TableTd>
+                    </TableTr>
                   ))}
-                  <Table.Tr>
-                    <Table.Td fw={700}>Total komposisi biaya</Table.Td>
-                    <Table.Td />
-                    <Table.Td ta="right" fw={700}>
+                  <TableTr>
+                    <TableTd fw={700}>Total komposisi biaya</TableTd>
+                    <TableTd />
+                    <TableTd ta="right" fw={700}>
                       {formatRupiah(totalCost)}
-                    </Table.Td>
-                  </Table.Tr>
-                </Table.Tbody>
+                    </TableTd>
+                  </TableTr>
+                </TableTbody>
               </Table>
             </Box>
           </Stack>

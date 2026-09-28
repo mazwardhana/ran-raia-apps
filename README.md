@@ -39,15 +39,16 @@ Layanan yang naik:
 
 ### 2. Prisma: migrate & seed
 
-Skema saat ini dipasangkan lewat `db push` (belum ada folder migrasi):
+Skema dikunci lewat migrasi di `prisma/migrations/`:
 
 ```bash
-npm run db:push      # prisma db push — sinkronkan skema ke database
-npm run db:seed      # tsx prisma/seed.ts — isi data demo
+npx prisma migrate deploy  # pasang migrasi (jalur aman, tanpa regenerasi skema)
+npm run db:seed            # tsx prisma/seed.ts — isi data demo
 ```
 
-> Bila kelak sudah ada folder `prisma/migrations`, gunakan
-> `npm run db:migrate` (`prisma migrate dev`).
+`npm run db:migrate` (`prisma migrate dev`) hanya untuk mengembangkan skema —
+ia bisa membuat migrasi baru dan tidak boleh dipakai di database produksi.
+`npm run db:push` hanya untuk migrasi sekali jalan (tanpa file migrasi).
 
 ### 3. Development lokal (tanpa Docker untuk app-nya)
 
@@ -105,23 +106,96 @@ Salin `.env.example` ke `.env`:
 
 ## Deploy `ran.teknoloka.id`
 
-1. Build & jalankan di server: `docker compose up -d --build`.
-2. Pastikan DNS `ran.teknoloka.id` menunjuk ke IP server.
-3. nginx (`nginx/nginx.conf`) sudah dikonfigurasi:
-   - `server_name ran.teknoloka.id`
-   - `proxy_pass http://nextjs:3000`
-   - `client_max_body_size 20M`
-4. HTTPS dengan certbot **di host** (bukan di container):
+Site ini berdiri sendiri dan **tidak** menyentuh `raia.teknoloka.id`, container
+`raia-app`, maupun project lain di server.
+
+Alur trafik:
+
+```
+Cloudflare Tunnel -> teknoloka-nginx:80 -> container ran-app:3000 -> ran-postgres:5432
+```
+
+nginx berada di network `teknoloka-network`, jadi app Raia harus berada di
+network yang sama. Container nginx **tidak bisa** menjangkau proses di host
+(port yang di-publish ke host diblokir dari jaringan docker), sehingga app
+dijalankan sebagai container — bukan `npm start` di host.
+
+### Langkah deploy
+
+1. **Database sendiri** (nama & volume terpisah dari project lain):
+
    ```bash
-   certbot --nginx -d ran.teknoloka.id
+   docker network create ran-app-net
+   docker run -d --name ran-postgres --restart unless-stopped \
+     --network ran-app-net \
+     -e POSTGRES_USER=raia -e POSTGRES_PASSWORD=raia_password -e POSTGRES_DB=raia \
+     -p 127.0.0.1:5432:5432 -v ran_pgdata:/var/lib/postgresql/data \
+     postgres:16-alpine
    ```
-   Certbot menambahkan blok `listen 443 ssl` + `ssl_certificate`; setelah itu
-   aktifkan redirect `return 301 https://$host$request_uri;` yang sudah dikomentari
-   di `nginx/nginx.conf`. Sertifikat tidak disimpan di repo.
-5. Set `AUTH_URL=https://ran.teknoloka.id` dan `NEXT_PUBLIC_APP_URL=https://ran.teknoloka.id`
-   di environment produksi.
-6. Database & seed di production: `npm run db:push && npm run db:seed`
-   (seed sengaja menghapus data turunan lalu mengisi ulang — jangan jalankan di DB produksi berisi data nyata).
+
+2. **Migrasi + seed** (dari host, `DATABASE_URL` menimpa nilai di `.env`):
+
+   ```bash
+   DATABASE_URL="postgresql://raia:raia_password@127.0.0.1:5432/raia" npx prisma migrate deploy
+   DATABASE_URL="postgresql://raia:raia_password@127.0.0.1:5432/raia" npm run db:seed
+   ```
+
+3. **Build image.** `NEXT_PUBLIC_*` disuntikkan saat build, jadi harus lewat
+   `--build-arg`:
+
+   ```bash
+   docker build \
+     --build-arg NEXT_PUBLIC_APP_URL="https://ran.teknoloka.id" \
+     --build-arg NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="SB-Mid-client-dev" \
+     -t ran-app:local .
+   ```
+
+4. **Jalankan app.** `AUTH_SECRET` hanya diberikan di sini (tidak dibakar ke
+   image); simpan nilainya di `.env.production.local` yang di-gitignore:
+
+   ```bash
+   docker run -d --name ran-app --restart unless-stopped \
+     --network ran-app-net \
+     -e DATABASE_URL="postgresql://raia:raia_password@ran-postgres:5432/raia" \
+     -e AUTH_SECRET="$(grep '^AUTH_SECRET=' .env.production.local | cut -d= -f2- | tr -d '\"')" \
+     -e AUTH_URL="https://ran.teknoloka.id" \
+     -e AUTH_TRUST_HOST="true" \
+     -e MIDTRANS_SERVER_KEY="SB-Mid-server-dev" \
+     -e MIDTRANS_CLIENT_KEY="SB-Mid-client-dev" \
+     -e MIDTRANS_IS_PRODUCTION="false" \
+     -e NEXT_PUBLIC_MIDTRANS_CLIENT_KEY="SB-Mid-client-dev" \
+     ran-app:local
+   docker network connect teknoloka-network ran-app
+   ```
+
+5. **nginx**: `/opt/teknoloka/nginx/conf.d/ran.conf` meneruskan
+   `ran.teknoloka.id` ke `http://ran-app:3000`. `proxy_pass` memakai variabel
+   (`set $ran_upstream` + `resolver 127.0.0.11`) supaya nginx tetap bisa start
+   walau container `ran-app` sedang mati:
+
+   ```bash
+   docker exec teknoloka-nginx nginx -t && docker exec teknoloka-nginx nginx -s reload
+   ```
+
+6. **Cloudflare Tunnel** mengarahkan hostname `ran.teknoloka.id` ke
+   `http://teknoloka-nginx:80`. DNS-nya di-proxy Cloudflare, jadi tidak perlu
+   certbot di server.
+
+### Catatan Dockerfile
+
+- Basis image **Debian** (`node:20-slim`), bukan Alpine. Prisma 5 memilih engine
+  berdasarkan OpenSSL yang terdeteksi; image `node:*slim` tidak menyertakan
+  OpenSSL sehingga `openssl` dipasang eksplisit di semua stage. Tanpa itu
+  Prisma memilih engine OpenSSL 1.1 yang gagal dimuat saat runtime.
+- `next.config.mjs` wajib disalin ke stage runner, jika tidak konfigurasi PWA
+  diabaikan saat `next start`.
+
+### Kalau memakai Docker Compose
+
+`docker-compose.yml` di repo ini memakai `container_name` tetap (`raia-postgres`,
+`raia-nextjs`, ...). Nama-nama itu bisa bentrok dengan project lain di server
+yang juga memakai nama serupa. Untuk deploy di server bersama, ikuti langkah
+`docker run` di atas, bukan `docker compose up`.
 
 ## Perintah Test & Build
 
