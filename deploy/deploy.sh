@@ -148,7 +148,9 @@ build_run_env() {
 
   RUN_ENV=()
   for k in "${!ENV_MAP[@]}"; do
-    [[ "$k" == "DATABASE_URL" ]] && continue
+    if [[ "$k" == "DATABASE_URL" ]]; then
+      continue
+    fi
     RUN_ENV+=(-e "$k=${ENV_MAP[$k]}")
   done
   RUN_ENV+=(-e "DATABASE_URL=$runtime_db_url")
@@ -156,8 +158,9 @@ build_run_env() {
 
 # --- Kontainer dan jaringan ---------------------------------------------------
 edge_connected() {
-  docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$CONTAINER" 2>/dev/null \
-    | tr ' ' '\n' | grep -qx "$EDGE_NET"
+  local nets
+  nets="$(docker inspect --format '{{range $k,$v := .NetworkSettings.Networks}}{{$k}} {{end}}' "$CONTAINER" 2>/dev/null)" || return 1
+  [[ " $nets " == *" $EDGE_NET "* ]]
 }
 
 ensure_edge_network() {
@@ -205,7 +208,14 @@ wait_healthy() {
 }
 
 rollback() {
-  warn "Uji kesehatan tidak pernah lulus. Mengembalikan ke '$PREVIOUS_IMAGE'."
+  warn "Uji kesehatan tidak pernah lulus."
+
+  if ! docker image inspect "$PREVIOUS_IMAGE" >/dev/null 2>&1; then
+    warn "Image '$PREVIOUS_IMAGE' tidak tersedia; rollback otomatis mustahil. Perbaiki segera secara manual (lihat deploy/README.md)."
+    exit 1
+  fi
+
+  warn "Mengembalikan ke '$PREVIOUS_IMAGE'."
   docker rm -f "$CONTAINER" >/dev/null 2>&1 || true
   start_container "$PREVIOUS_IMAGE"
   if wait_healthy; then
