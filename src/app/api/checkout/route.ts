@@ -193,6 +193,13 @@ export async function POST(request: NextRequest) {
     }
 
     try {
+      // Email asli pembeli untuk Midtrans. `getCurrentUser()` hanya membawa
+      // id/role/username/kycStatus, jadi dibaca terpisah dengan select sempit.
+      const buyer = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { email: true },
+      });
+
       const snapToken = await createSnapToken({
         orderId: midtransOrderId,
         grossAmount: totalAmount,
@@ -206,7 +213,7 @@ export async function POST(request: NextRequest) {
         ],
         customerDetails: {
           first_name: user.username,
-          email: '',
+          email: buyer?.email,
         },
       });
 

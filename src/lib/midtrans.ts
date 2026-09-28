@@ -17,7 +17,7 @@ export interface MidtransItemDetail {
 
 export interface MidtransCustomerDetails {
   first_name: string;
-  email: string;
+  email?: string;
   phone?: string;
 }
 
@@ -48,13 +48,22 @@ export async function createSnapToken(
 ): Promise<SnapTokenResponse> {
   const { orderId, grossAmount, itemDetails, customerDetails } = params;
 
+  // Snap menolak `customer_details.email` yang tidak valid, termasuk string
+  // kosong ("customer_details.email format is invalid"). Karena email di sini
+  // opsional, kuncinya hanya dikirim bila benar-benar berisi.
+  const { email, ...customerDetailsWithoutEmail } = customerDetails;
+  const trimmedEmail = email?.trim();
+  const customer_details: MidtransCustomerDetails = trimmedEmail
+    ? { ...customerDetailsWithoutEmail, email: trimmedEmail }
+    : customerDetailsWithoutEmail;
+
   const payload = {
     transaction_details: {
       order_id: orderId,
       gross_amount: grossAmount,
     },
     item_details: itemDetails,
-    customer_details: customerDetails,
+    customer_details,
   };
 
   const authString = Buffer.from(MIDTRANS_SERVER_KEY + ':').toString('base64');

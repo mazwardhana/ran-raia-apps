@@ -52,6 +52,7 @@ const mocks = vi.hoisted(() => {
     fullOwnership: tx.fullOwnership,
     investorBalance: tx.investorBalance,
     setting: { findUnique: vi.fn() },
+    user: { findUnique: vi.fn() },
     $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) =>
       callback(tx)
     ),
@@ -170,6 +171,10 @@ beforeEach(() => {
   vi.mocked(getCurrentUser).mockResolvedValue(user);
   vi.mocked(verifySignature).mockReturnValue(true);
   mocks.prisma.setting.findUnique.mockResolvedValue(null);
+  // Email pembeli yang dibaca route checkout untuk customer_details Midtrans.
+  mocks.prisma.user.findUnique.mockResolvedValue({
+    email: 'budi@example.com',
+  });
   mocks.prisma.transaction.findMany.mockResolvedValue([]);
   // Gerbang atomik: jalur normal selalu menemukan baris berstatus PENDING.
   mocks.tx.transaction.updateMany.mockResolvedValue({ count: 1 });
