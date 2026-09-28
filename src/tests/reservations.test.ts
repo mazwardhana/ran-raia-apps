@@ -1,10 +1,11 @@
+import type { Prisma } from '@prisma/client';
 import { NextRequest } from 'next/server';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POST as checkoutPOST } from '@/app/api/checkout/route';
 import { POST as callbackPOST } from '@/app/api/payments/midtrans/callback/route';
 import { POST as simulatePOST } from '@/app/api/payments/simulate/route';
-import { getCurrentUser } from '@/lib/auth';
+import { getCurrentUser, type CurrentUser } from '@/lib/auth';
 import { createSnapToken, verifySignature } from '@/lib/midtrans';
 import {
   calcLotRange,
@@ -85,7 +86,7 @@ const pkg = {
   status: 'OPEN',
 };
 
-const user = {
+const user: CurrentUser = {
   id: 'usr_1',
   role: 'INVESTOR',
   username: 'budi',
@@ -128,15 +129,19 @@ function installStatefulPackage(initialSoldLots: number) {
     soldLots: initialSoldLots,
   });
 
-  mocks.tx.package.updateMany.mockImplementation(async ({ data }: any) => {
-    state.soldLots += data.soldLots.increment;
-    return { count: 1 };
-  });
+  mocks.tx.package.updateMany.mockImplementation(
+    async ({ data }: { data: { soldLots: { increment: number } } }) => {
+      state.soldLots += data.soldLots.increment;
+      return { count: 1 };
+    }
+  );
 
-  mocks.tx.package.update.mockImplementation(async ({ data }: any) => {
-    state.soldLots -= data.soldLots.decrement;
-    return {};
-  });
+  mocks.tx.package.update.mockImplementation(
+    async ({ data }: { data: { soldLots: { decrement: number } } }) => {
+      state.soldLots -= data.soldLots.decrement;
+      return {};
+    }
+  );
 
   return state;
 }
@@ -159,10 +164,10 @@ function pendingLotTransaction(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   vi.resetAllMocks();
-  mocks.prisma.$transaction.mockImplementation(async (callback: any) =>
-    callback(mocks.tx)
+  mocks.prisma.$transaction.mockImplementation(
+    async (callback: (client: typeof mocks.tx) => unknown) => callback(mocks.tx)
   );
-  vi.mocked(getCurrentUser).mockResolvedValue(user as any);
+  vi.mocked(getCurrentUser).mockResolvedValue(user);
   vi.mocked(verifySignature).mockReturnValue(true);
   mocks.prisma.setting.findUnique.mockResolvedValue(null);
   mocks.prisma.transaction.findMany.mockResolvedValue([]);
@@ -245,7 +250,7 @@ describe('POST /api/checkout — kebocoran slot saat createSnapToken gagal', () 
 
   it('melepas reservasi FULL dengan totalLots paket (lotCount null)', async () => {
     mocks.prisma.package.findUnique.mockResolvedValue({ ...pkg, soldLots: 0 });
-    mocks.tx.package.updateMany.mockImplementation(async ({ data }: any) => {
+    mocks.tx.package.updateMany.mockImplementation(async () => {
       return { count: 1 };
     });
     mocks.tx.transaction.create.mockResolvedValue({
@@ -291,17 +296,21 @@ describe('releaseReservation', () => {
     mocks.tx.transaction.findUnique.mockImplementation(async () =>
       pendingLotTransaction({ status: state.status })
     );
-    mocks.tx.package.update.mockImplementation(async ({ data }: any) => {
-      state.soldLots -= data.soldLots.decrement;
-      return {};
-    });
-    mocks.tx.transaction.updateMany.mockImplementation(async ({ data }: any) => {
-      state.status = data.status;
-      return { count: 1 };
-    });
+    mocks.tx.package.update.mockImplementation(
+      async ({ data }: { data: { soldLots: { decrement: number } } }) => {
+        state.soldLots -= data.soldLots.decrement;
+        return {};
+      }
+    );
+    mocks.tx.transaction.updateMany.mockImplementation(
+      async ({ data }: { data: { status: string } }) => {
+        state.status = data.status;
+        return { count: 1 };
+      }
+    );
 
-    await releaseReservation(mocks.tx as any, 'trx_1');
-    await releaseReservation(mocks.tx as any, 'trx_1');
+    await releaseReservation(mocks.tx as unknown as Prisma.TransactionClient, 'trx_1');
+    await releaseReservation(mocks.tx as unknown as Prisma.TransactionClient, 'trx_1');
 
     expect(mocks.tx.package.update).toHaveBeenCalledTimes(1);
     expect(mocks.tx.lotOwnership.deleteMany).toHaveBeenCalledTimes(1);
@@ -315,7 +324,7 @@ describe('releaseReservation', () => {
       pendingLotTransaction({ status: 'PAID', lotCount: null })
     );
 
-    await releaseReservation(mocks.tx as any, 'trx_1');
+    await releaseReservation(mocks.tx as unknown as Prisma.TransactionClient, 'trx_1');
 
     expect(mocks.tx.package.update).not.toHaveBeenCalled();
     expect(mocks.tx.lotOwnership.deleteMany).not.toHaveBeenCalled();
@@ -328,7 +337,7 @@ describe('releaseReservation', () => {
     mocks.tx.transaction.findUnique.mockResolvedValue(pendingLotTransaction());
     mocks.tx.transaction.updateMany.mockResolvedValue({ count: 0 });
 
-    await releaseReservation(mocks.tx as any, 'trx_1');
+    await releaseReservation(mocks.tx as unknown as Prisma.TransactionClient, 'trx_1');
 
     expect(mocks.tx.package.update).not.toHaveBeenCalled();
     expect(mocks.tx.lotOwnership.deleteMany).not.toHaveBeenCalled();
@@ -463,14 +472,15 @@ describe('expireStaleTransactions', () => {
     ];
 
     mocks.prisma.transaction.findMany.mockImplementation(
-      async ({ where }: any) =>
+      async ({ where }: { where: { status: string; expiredAt: { lt: Date } } }) =>
         all.filter(
           (t) =>
-            t.status === where.status && t.expiredAt.getTime() < where.expiredAt.lt.getTime()
+            t.status === where.status &&
+            t.expiredAt.getTime() < where.expiredAt.lt.getTime()
         )
     );
     mocks.tx.transaction.findUnique.mockImplementation(
-      async ({ where }: any) =>
+      async ({ where }: { where: { id: string } }) =>
         pendingLotTransaction({
           id: where.id,
           orderId: where.id,
