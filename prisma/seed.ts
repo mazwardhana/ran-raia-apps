@@ -12,6 +12,7 @@ import { users } from './seed-data/users';
 import { packages } from './seed-data/packages';
 import { articles } from './seed-data/articles';
 import { settings } from './seed-data/settings';
+import { ensureTreasuryUser } from '../src/lib/treasury';
 
 const prisma = new PrismaClient();
 
@@ -134,6 +135,10 @@ async function main() {
     });
     userMap[u.username] = user.id;
   }
+
+  // Akun treasury Raia: role SYSTEM, tidak bisa dipakai masuk (kata sandi acak
+  // yang hanya disimpan sebagai hash).
+  await ensureTreasuryUser(prisma);
 
   // 4. Packages + PackageCost
   console.log('  • Packages + Costs...');
