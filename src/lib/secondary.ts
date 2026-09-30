@@ -64,10 +64,17 @@ export async function expireStaleListings(): Promise<void> {
       return;
     }
 
+    // Akun treasury persisten: cukup di-upsert sekali per sapuan. Dilakukan di
+    // luar transaksi per-listing agar hashing bcrypt tidak diulang tiap baris
+    // dan tidak memperpanjang durasi transaksi.
+    const treasury = await ensureTreasuryUser(prisma);
+
+    let takenOverCount = 0;
+
     // Process each expired listing
     for (const listing of staleListings) {
       try {
-        await prisma.$transaction(async (tx) => {
+        const didTakeover = await prisma.$transaction(async (tx) => {
           // 1. Klaim listing secara atomik: hanya ACTIVE yang boleh menjadi
           //    TAKEOVER (Ruling 18). Pembalap yang kalah mendapat count 0 dan
           //    tidak boleh memindahkan aset atau mengkredit saldo.
@@ -79,28 +86,33 @@ export async function expireStaleListings(): Promise<void> {
             },
           });
 
-          if (claimed.count === 0) return;
+          if (claimed.count === 0) return false;
 
           // 2. Pindahkan HANYA aset penjual ke akun treasury (Ruling 17).
           //    FULL: baris FullOwnership penjual; LOT: baris lot dengan rentang
           //    yang persis sama. Guard `userId: listing.sellerId` wajib agar
           //    kepemilikan investor lain pada paket yang sama tidak ikut pindah.
-          const treasury = await ensureTreasuryUser(tx);
-
+          //    Bila tak ada baris penjual yang cocok, lempar supaya seluruh
+          //    transaksi rollback — penjual tidak boleh dibayar tanpa aset
+          //    berpindah ke treasury (mengikuti completeSecondaryPurchase).
           if (listing.ownershipType === 'FULL') {
-            await tx.fullOwnership.updateMany({
+            const moved = await tx.fullOwnership.updateMany({
               where: {
                 packageId: listing.packageId,
                 userId: listing.sellerId,
               },
               data: { userId: treasury.id },
             });
+
+            if (moved.count === 0) {
+              throw new Error('Kepemilikan penjual tidak ditemukan saat takeover');
+            }
           } else {
             if (listing.lotStart === null || listing.lotEnd === null) {
               throw new Error('Rentang lot listing tidak lengkap');
             }
 
-            await tx.lotOwnership.updateMany({
+            const moved = await tx.lotOwnership.updateMany({
               where: {
                 packageId: listing.packageId,
                 userId: listing.sellerId,
@@ -109,6 +121,10 @@ export async function expireStaleListings(): Promise<void> {
               },
               data: { userId: treasury.id },
             });
+
+            if (moved.count === 0) {
+              throw new Error('Kepemilikan penjual tidak ditemukan saat takeover');
+            }
           }
 
           // 3. Create SecondarySale record with SYSTEM as buyer (Raia takeover)
@@ -152,14 +168,20 @@ export async function expireStaleListings(): Promise<void> {
               },
             },
           });
+
+          return true;
         });
+
+        if (didTakeover) {
+          takenOverCount += 1;
+        }
       } catch (listError) {
         // Keep processing the rest if one listing fails (e.g. duplicate sale)
         console.error(`Gagal memproses takeover listing ${listing.id}:`, listError);
       }
     }
 
-    console.log(`Expired ${staleListings.length} stale secondary listings`);
+    console.log(`Mengambil alih ${takenOverCount} dari ${staleListings.length} listing secondary kedaluwarsa`);
   } catch (error) {
     console.error('Error expiring stale listings:', error);
     // Don't throw - this is a background cleanup operation

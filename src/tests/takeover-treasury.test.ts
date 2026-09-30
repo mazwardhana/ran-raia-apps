@@ -257,6 +257,9 @@ describe('takeover — hanya baris penjual yang berpindah (Ruling 17)', () => {
 
 describe('takeover — kredit penjual 100% tetap dipertahankan', () => {
   it('mencatat sale SYSTEM tanpa fee dan transaksi TAKEOVER PAID sebesar par', async () => {
+    mocks.state.lots = [
+      { id: 'lot_seller', packageId: 'pkg_1', userId: 'seller_1', lotStart: 1, lotEnd: 10 },
+    ];
     mocks.prisma.secondaryListing.findMany.mockResolvedValue([staleListing()]);
 
     await expireStaleListings();
@@ -282,6 +285,9 @@ describe('takeover — kredit penjual 100% tetap dipertahankan', () => {
   });
 
   it('mengkredit penjual 100% par tanpa potongan', async () => {
+    mocks.state.lots = [
+      { id: 'lot_seller', packageId: 'pkg_1', userId: 'seller_1', lotStart: 1, lotEnd: 10 },
+    ];
     mocks.prisma.secondaryListing.findMany.mockResolvedValue([staleListing()]);
 
     await expireStaleListings();
@@ -343,6 +349,38 @@ describe('takeover — klaim listing ber-guard (Ruling 18)', () => {
 
     expect(mocks.state.lots[0].userId).toBe('seller_1');
     expect(mocks.tx.lotOwnership.updateMany).not.toHaveBeenCalled();
+    expect(mocks.tx.secondarySale.create).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.create).not.toHaveBeenCalled();
+    expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// Baris kepemilikan penjual tidak ada — jangan bayar tanpa aset berpindah
+// ===========================================================================
+
+describe('takeover — baris penjual tidak ditemukan', () => {
+  it('LOT: rollback, penjual tidak dikredit bila tidak ada baris lot yang cocok', async () => {
+    mocks.state.lots = [];
+    mocks.prisma.secondaryListing.findMany.mockResolvedValue([staleListing()]);
+
+    await expect(expireStaleListings()).resolves.toBeUndefined();
+
+    expect(mocks.tx.lotOwnership.updateMany).toHaveBeenCalled();
+    expect(mocks.tx.secondarySale.create).not.toHaveBeenCalled();
+    expect(mocks.tx.transaction.create).not.toHaveBeenCalled();
+    expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();
+  });
+
+  it('FULL: rollback, penjual tidak dikredit bila tidak ada baris full yang cocok', async () => {
+    mocks.state.fulls = [];
+    mocks.prisma.secondaryListing.findMany.mockResolvedValue([
+      staleListing({ ownershipType: 'FULL', lotStart: null, lotEnd: null }),
+    ]);
+
+    await expect(expireStaleListings()).resolves.toBeUndefined();
+
+    expect(mocks.tx.fullOwnership.updateMany).toHaveBeenCalled();
     expect(mocks.tx.secondarySale.create).not.toHaveBeenCalled();
     expect(mocks.tx.transaction.create).not.toHaveBeenCalled();
     expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();

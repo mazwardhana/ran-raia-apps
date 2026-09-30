@@ -18,7 +18,6 @@ const mocks = vi.hoisted(() => {
     investorBalance: { upsert: vi.fn() },
     lotOwnership: { deleteMany: vi.fn(), updateMany: vi.fn() },
     fullOwnership: { deleteMany: vi.fn(), updateMany: vi.fn() },
-    user: { upsert: vi.fn() },
   };
 
   const prisma = {
@@ -32,6 +31,7 @@ const mocks = vi.hoisted(() => {
     },
     investorBalance: { upsert: vi.fn() },
     package: { update: vi.fn() },
+    user: { upsert: vi.fn() },
     lotOwnership: { deleteMany: vi.fn() },
     fullOwnership: { deleteMany: vi.fn() },
     $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) =>
@@ -70,7 +70,7 @@ beforeEach(() => {
   mocks.tx.investorBalance.upsert.mockResolvedValue({});
   mocks.tx.lotOwnership.updateMany.mockResolvedValue({ count: 1 });
   mocks.tx.fullOwnership.updateMany.mockResolvedValue({ count: 1 });
-  mocks.tx.user.upsert.mockResolvedValue({ id: 'treasury_1' });
+  mocks.prisma.user.upsert.mockResolvedValue({ id: 'treasury_1' });
   vi.mocked(releaseSecondaryPending).mockResolvedValue(undefined);
 
   vi.spyOn(console, 'log').mockImplementation(() => {});
