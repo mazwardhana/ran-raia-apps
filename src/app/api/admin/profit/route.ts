@@ -5,6 +5,7 @@ import { requireRole } from '@/lib/auth';
 import { calcProfitSplit } from '@/lib/calculations';
 import { createNotification } from '@/lib/notifications';
 import { prisma } from '@/lib/prisma';
+import { distributeAndCredit } from '@/lib/profit-payout';
 
 /**
  * Pembagian profit Raia/Investor (default 60/40) diambil dari tabel Setting:
@@ -169,16 +170,35 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Aksi perubahan status: tandai sudah dibagikan
+    // Aksi perubahan status: tandai sudah dibagikan + kredit saldo investor.
     const actionParse = actionSchema.safeParse(body);
     if (actionParse.success) {
-      const updated = await prisma.profitDistribution.update({
-        where: { id: actionParse.data.id },
-        data: {
-          status: 'DISTRIBUTED',
-          distributedAt: new Date(),
-        },
+      const id = actionParse.data.id;
+
+      // Klaim status dan kredit investor dalam satu transaksi. Bila distribusi
+      // sudah pernah dibagikan, `distributeAndCredit` mengembalikan false dan
+      // tidak ada saldo yang dikredit ulang.
+      const credited = await prisma.$transaction(async (tx) =>
+        distributeAndCredit(tx, id)
+      );
+
+      if (!credited) {
+        return NextResponse.json(
+          { error: 'Distribusi ini sudah pernah dibagikan' },
+          { status: 409 }
+        );
+      }
+
+      const updated = await prisma.profitDistribution.findUnique({
+        where: { id },
       });
+
+      if (!updated) {
+        return NextResponse.json(
+          { error: 'Distribusi profit tidak ditemukan' },
+          { status: 404 }
+        );
+      }
 
       // Beritahu investor pemilik paket ini (kueri sederhana: pemilik lot + utuh)
       try {
