@@ -75,6 +75,7 @@ export default function SecondaryPage() {
   const [error, setError] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [buyTarget, setBuyTarget] = useState<ListingRow | null>(null);
+  const [cancelTarget, setCancelTarget] = useState<ListingRow | null>(null);
   const [sellTarget, setSellTarget] = useState<MyOwnershipRow | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -131,6 +132,27 @@ export default function SecondaryPage() {
       }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Gagal membeli listing');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const submitCancel = async () => {
+    if (!cancelTarget) return;
+    setSubmitting(true);
+    setActionError(null);
+    try {
+      const res = await fetch(`/api/secondary/${cancelTarget.id}`, {
+        method: 'DELETE',
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        throw new Error(json.error || 'Gagal membatalkan listing');
+      }
+      setCancelTarget(null);
+      await load();
+    } catch (e) {
+      setActionError(e instanceof Error ? e.message : 'Gagal membatalkan listing');
     } finally {
       setSubmitting(false);
     }
@@ -230,18 +252,31 @@ export default function SecondaryPage() {
                           <StatusBadge status={row.status ?? 'ACTIVE'} />
                         </Table.Td>
                         <Table.Td>
-                          <Button
-                            size="xs"
-                            variant={row.isMine ? 'default' : 'filled'}
-                            disabled={row.isMine}
-                            onClick={() => {
-                              setActionError(null);
-                              setBuyTarget(row);
-                            }}
-                            styles={{ root: { minHeight: 44 } }}
-                          >
-                            {row.isMine ? 'Milik Anda' : 'Beli'}
-                          </Button>
+                          {row.isMine ? (
+                            <Button
+                              size="xs"
+                              variant="default"
+                              onClick={() => {
+                                setActionError(null);
+                                setCancelTarget(row);
+                              }}
+                              styles={{ root: { minHeight: 44 } }}
+                            >
+                              Batalkan
+                            </Button>
+                          ) : (
+                            <Button
+                              size="xs"
+                              variant="filled"
+                              onClick={() => {
+                                setActionError(null);
+                                setBuyTarget(row);
+                              }}
+                              styles={{ root: { minHeight: 44 } }}
+                            >
+                              Beli
+                            </Button>
+                          )}
                         </Table.Td>
                       </Table.Tr>
                     ))}
@@ -337,6 +372,42 @@ export default function SecondaryPage() {
           </Stack>
         </section>
       </Stack>
+
+      <BaseModal
+        opened={cancelTarget !== null}
+        onClose={() => setCancelTarget(null)}
+        title="Batalkan listing"
+        size="xs"
+      >
+        <Stack gap="md">
+          <Text size="sm">
+            Tawaran{' '}
+            <strong>{cancelTarget?.package?.title || 'paket ini'}</strong> pada
+            harga par{' '}
+            <strong>
+              {cancelTarget ? formatRupiah(cancelTarget.listingPrice) : ''}
+            </strong>{' '}
+            akan ditarik dari secondary market. Aset tetap menjadi milik Anda.
+          </Text>
+          {actionError && (
+            <Alert color="red" role="alert">
+              {actionError}
+            </Alert>
+          )}
+          <Group justify="flex-end" gap="sm">
+            <Button
+              variant="default"
+              onClick={() => setCancelTarget(null)}
+              disabled={submitting}
+            >
+              Batal
+            </Button>
+            <Button onClick={submitCancel} loading={submitting}>
+              Konfirmasi batalkan
+            </Button>
+          </Group>
+        </Stack>
+      </BaseModal>
 
       <BaseModal
         opened={buyTarget !== null}
