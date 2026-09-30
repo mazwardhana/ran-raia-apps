@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { expireStaleListings } from '@/lib/secondary';
+import { expireStaleListings, expireStalePendingPayments } from '@/lib/secondary';
 
 interface MyAsset {
   ownershipId: string;
@@ -27,6 +27,7 @@ export async function GET() {
   try {
     // Run expiry check before returning listings
     await expireStaleListings();
+    await expireStalePendingPayments();
 
     const user = await getCurrentUser();
 

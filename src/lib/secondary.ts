@@ -1,5 +1,6 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+import { releaseSecondaryPending } from '@/lib/secondary-settlement';
 
 /**
  * Calculate the admin fee for a secondary listing.
@@ -125,5 +126,41 @@ export async function expireStaleListings(): Promise<void> {
   } catch (error) {
     console.error('Error expiring stale listings:', error);
     // Don't throw - this is a background cleanup operation
+  }
+}
+
+/**
+ * Sapu pembelian secondary yang terkunci tapi pembayarannya tak kunjung tiba.
+ *
+ * Listing sudah PENDING_PAYMENT (dikunci Task 3) dan transaksinya masih
+ * PENDING; begitu `expiredAt` lewat, `releaseSecondaryPending` mengembalikan
+ * listing ke ACTIVE dan menandai transaksi EXPIRED tanpa menyentuh aset.
+ *
+ * Mengikuti pola `expireStaleTransactions()`: dipanggil oportunistik dari
+ * route yang membaca data. Satu baris yang gagal tidak menghentikan sisanya,
+ * dan kegagalan kueri tidak pernah melempar ke pemanggil.
+ */
+export async function expireStalePendingPayments(): Promise<void> {
+  try {
+    const staleTransactions = await prisma.transaction.findMany({
+      where: {
+        type: 'SECONDARY_BUY',
+        status: 'PENDING',
+        expiredAt: { lt: new Date() },
+      },
+      select: { id: true },
+    });
+
+    for (const { id } of staleTransactions) {
+      try {
+        await prisma.$transaction((tx) =>
+          releaseSecondaryPending(tx, id, 'EXPIRED')
+        );
+      } catch (error) {
+        console.error(`Gagal melepas pembelian secondary kedaluwarsa ${id}:`, error);
+      }
+    }
+  } catch (error) {
+    console.error('Error expiring stale secondary payments:', error);
   }
 }

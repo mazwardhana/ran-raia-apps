@@ -154,6 +154,7 @@ function pendingLotTransaction(overrides: Record<string, unknown> = {}) {
     orderId: 'TRX-1',
     userId: 'usr_1',
     packageId: 'pkg_1',
+    type: 'BUY',
     status: 'PENDING',
     lotCount: 5,
     package: { totalLots: 100 },
@@ -477,10 +478,19 @@ describe('expireStaleTransactions', () => {
     ];
 
     mocks.prisma.transaction.findMany.mockImplementation(
-      async ({ where }: { where: { status: string; expiredAt: { lt: Date } } }) =>
+      async ({
+        where,
+      }: {
+        where: {
+          status: string;
+          type?: { not: string };
+          expiredAt: { lt: Date };
+        };
+      }) =>
         all.filter(
           (t) =>
             t.status === where.status &&
+            (!where.type || t.type !== where.type.not) &&
             t.expiredAt.getTime() < where.expiredAt.lt.getTime()
         )
     );
@@ -495,10 +505,15 @@ describe('expireStaleTransactions', () => {
 
     await expireStaleTransactions();
 
-    // kueri menyaring tepat status PENDING + expiredAt lewat waktu
+    // kueri menyaring tepat status PENDING + expiredAt lewat waktu, dan
+    // mengecualikan pesanan secondary (ditangani sapuan terpisah)
     expect(mocks.prisma.transaction.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: { status: 'PENDING', expiredAt: { lt: expect.any(Date) } },
+        where: {
+          status: 'PENDING',
+          type: { not: 'SECONDARY_BUY' },
+          expiredAt: { lt: expect.any(Date) },
+        },
       })
     );
 

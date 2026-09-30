@@ -27,7 +27,10 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@/lib/prisma', () => ({ prisma: mocks.prisma }));
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
-vi.mock('@/lib/secondary', () => ({ expireStaleListings: vi.fn() }));
+vi.mock('@/lib/secondary', () => ({
+  expireStaleListings: vi.fn(),
+  expireStalePendingPayments: vi.fn(),
+}));
 vi.mock('@/lib/notifications', () => ({ createNotification: vi.fn() }));
 
 // ---------------------------------------------------------------------------

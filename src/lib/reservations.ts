@@ -93,6 +93,7 @@ export async function expireStaleTransactions(): Promise<void> {
     const staleTransactions = await prisma.transaction.findMany({
       where: {
         status: 'PENDING',
+        type: { not: 'SECONDARY_BUY' },
         expiredAt: { lt: new Date() },
       },
       select: { id: true },
