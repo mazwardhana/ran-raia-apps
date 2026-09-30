@@ -177,8 +177,10 @@ export async function POST(request: NextRequest) {
       // (kolom @unique) supaya percobaan ulang tidak menabrak P2002, lalu
       // kembalikan listing ke ACTIVE.
       await prisma.$transaction(async (tx) => {
-        await tx.transaction.update({
-          where: { id: result.transaction.id },
+        // Transisi status ber-guard: hanya PENDING yang boleh dibatalkan,
+        // mengikuti pola `releaseReservation` di `src/lib/reservations.ts`.
+        await tx.transaction.updateMany({
+          where: { id: result.transaction.id, status: 'PENDING' },
           data: { status: 'CANCELLED', secondaryListingId: null },
         });
         await tx.secondaryListing.updateMany({

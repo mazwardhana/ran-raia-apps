@@ -41,6 +41,7 @@ const mocks = vi.hoisted(() => {
     transaction: {
       create: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     $transaction: vi.fn(),
   };
@@ -118,6 +119,7 @@ beforeEach(() => {
   mocks.prisma.secondaryListing.updateMany.mockResolvedValue({ count: 1 });
   mocks.prisma.transaction.create.mockResolvedValue({ id: 'tx_1', orderId: 'SEC-test-123' });
   mocks.prisma.transaction.update.mockResolvedValue({ id: 'tx_1', orderId: 'SEC-test-123' });
+  mocks.prisma.transaction.updateMany.mockResolvedValue({ count: 1 });
 
   // $transaction melewatkan prisma sebagai tx supaya tx.* === prisma.*
   mocks.prisma.$transaction.mockImplementation(
@@ -376,15 +378,15 @@ describe('POST /api/secondary/buy — snap token flow', () => {
       }
     );
 
-    mocks.prisma.transaction.update.mockImplementation(
+    mocks.prisma.transaction.updateMany.mockImplementation(
       async (args: {
-        where?: { id?: string };
+        where?: { id?: string; status?: string };
         data?: { secondaryListingId?: string | null };
       }) => {
         if (args?.data?.secondaryListingId === null && args?.where?.id) {
           linkedListingIds.delete(args.where.id);
         }
-        return { id: args?.where?.id };
+        return { count: 1 };
       }
     );
 
@@ -393,9 +395,10 @@ describe('POST /api/secondary/buy — snap token flow', () => {
     const res1 = await POST(buyRequest());
     expect(res1.status).toBe(502);
 
-    // Transaksi lama dibatalkan dan tautannya dilepas supaya tidak P2002.
-    expect(mocks.prisma.transaction.update).toHaveBeenCalledWith({
-      where: { id: 'tx_1' },
+    // Transaksi lama dibatalkan ber-guard (hanya PENDING) dan tautannya
+    // dilepas supaya tidak P2002.
+    expect(mocks.prisma.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'tx_1', status: 'PENDING' },
       data: { status: 'CANCELLED', secondaryListingId: null },
     });
     expect(mocks.prisma.secondaryListing.updateMany).toHaveBeenCalledWith({
