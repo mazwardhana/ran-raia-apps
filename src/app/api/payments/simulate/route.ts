@@ -4,6 +4,10 @@ import { getCurrentUser } from '@/lib/auth';
 import { isSimulateMode } from '@/lib/midtrans';
 import { prisma } from '@/lib/prisma';
 import { releaseReservation } from '@/lib/reservations';
+import {
+  completeSecondaryPurchase,
+  releaseSecondaryPending,
+} from '@/lib/secondary-settlement';
 
 /**
  * Dilempar di dalam `$transaction` ketika gerbang atomik tidak menemukan baris
@@ -75,8 +79,14 @@ export async function POST(request: NextRequest) {
     }
 
     if (action === 'cancel') {
+      // Pembelian secondary tidak pernah memindahkan aset saat bayar, jadi
+      // cukup kembalikan listing ke ACTIVE. Transaksi primer melepas slotnya.
+      const isSecondary = transaction.type === 'SECONDARY_BUY';
+
       await prisma.$transaction((tx) =>
-        releaseReservation(tx, transaction.id, 'CANCELLED')
+        isSecondary
+          ? releaseSecondaryPending(tx, transaction.id, 'CANCELLED')
+          : releaseReservation(tx, transaction.id, 'CANCELLED')
       );
 
       return NextResponse.json({
@@ -90,6 +100,18 @@ export async function POST(request: NextRequest) {
     // pengecekan di atas — di bawah READ COMMITTED keduanya bisa lolos.
     try {
       await prisma.$transaction(async (tx) => {
+        // Pembelian secondary diselesaikan lewat jalur settlement yang sama
+        // dengan callback Midtrans: pindahkan aset ke pembeli dan kredit
+        // penjual. Jalur primer di bawah hanya menandai PAID + baris saldo 0,
+        // yang akan meninggalkan listing menggantung di PENDING_PAYMENT.
+        if (
+          transaction.type === 'SECONDARY_BUY' &&
+          transaction.secondaryListingId
+        ) {
+          await completeSecondaryPurchase(tx, transaction.id, 'SIMULATE');
+          return;
+        }
+
         const claimed = await tx.transaction.updateMany({
           where: { id: transaction.id, status: 'PENDING' },
           data: {

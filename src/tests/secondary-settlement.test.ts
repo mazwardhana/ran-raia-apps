@@ -3,7 +3,9 @@ import { NextRequest } from 'next/server';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { POST as callbackPOST } from '@/app/api/payments/midtrans/callback/route';
-import { verifySignature } from '@/lib/midtrans';
+import { POST as simulatePOST } from '@/app/api/payments/simulate/route';
+import { getCurrentUser, type CurrentUser } from '@/lib/auth';
+import { isSimulateMode, verifySignature } from '@/lib/midtrans';
 import { releaseReservation } from '@/lib/reservations';
 import {
   completeSecondaryPurchase,
@@ -27,7 +29,7 @@ const mocks = vi.hoisted(() => {
   };
 
   const prisma = {
-    transaction: { findFirst: vi.fn() },
+    transaction: { findFirst: vi.fn(), findUnique: vi.fn() },
     $transaction: vi.fn(async (callback: (client: typeof tx) => unknown) =>
       callback(tx)
     ),
@@ -39,8 +41,9 @@ const mocks = vi.hoisted(() => {
 vi.mock('@/lib/prisma', () => ({ prisma: mocks.prisma }));
 vi.mock('@/lib/midtrans', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/midtrans')>();
-  return { ...actual, verifySignature: vi.fn() };
+  return { ...actual, verifySignature: vi.fn(), isSimulateMode: vi.fn() };
 });
+vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/reservations', () => ({ releaseReservation: vi.fn() }));
 
 const tx = mocks.tx as unknown as Prisma.TransactionClient;
@@ -89,6 +92,21 @@ function callbackRequest(body: Record<string, unknown>): NextRequest {
   });
 }
 
+function simulateRequest(body: Record<string, unknown>): NextRequest {
+  return new NextRequest('http://localhost/api/payments/simulate', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+}
+
+const buyer: CurrentUser = {
+  id: 'buyer_1',
+  role: 'INVESTOR',
+  username: 'pembeli',
+  kycStatus: 'VERIFIED',
+};
+
 beforeEach(() => {
   vi.resetAllMocks();
 
@@ -96,6 +114,8 @@ beforeEach(() => {
     async (callback: (client: typeof mocks.tx) => unknown) => callback(mocks.tx)
   );
   vi.mocked(verifySignature).mockReturnValue(true);
+  vi.mocked(isSimulateMode).mockReturnValue(true);
+  vi.mocked(getCurrentUser).mockResolvedValue(buyer);
 
   mocks.tx.transaction.findUnique.mockResolvedValue(
     pendingSecondaryTransaction()
@@ -110,6 +130,9 @@ beforeEach(() => {
   mocks.tx.investorBalance.upsert.mockResolvedValue({});
 
   mocks.prisma.transaction.findFirst.mockResolvedValue(
+    pendingSecondaryTransaction()
+  );
+  mocks.prisma.transaction.findUnique.mockResolvedValue(
     pendingSecondaryTransaction()
   );
 
@@ -489,6 +512,92 @@ describe('POST /api/payments/midtrans/callback — non-secondary tetap primary',
         signature_key: 'sig',
         transaction_status: 'cancel',
       })
+    );
+
+    expect(res.status).toBe(200);
+    expect(releaseReservation).toHaveBeenCalledWith(tx, 'trx_p', 'CANCELLED');
+    expect(mocks.tx.secondaryListing.updateMany).not.toHaveBeenCalled();
+  });
+});
+
+// ===========================================================================
+// Simulate path — harus menuntaskan secondary lewat jalur settlement
+// ===========================================================================
+
+describe('POST /api/payments/simulate — secondary', () => {
+  it('success pada SECONDARY_BUY menuntaskan lewat settlement, bukan upsert saldo 0', async () => {
+    const res = await simulatePOST(
+      simulateRequest({ orderId: 'SEC-1', action: 'success' })
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.status).toBe('success');
+
+    // Aset benar-benar berpindah ke pembeli dan penjual dikredit.
+    expect(mocks.tx.lotOwnership.update).toHaveBeenCalledWith({
+      where: { id: 'own_seller_426' },
+      data: { userId: 'buyer_1' },
+    });
+    expect(mocks.tx.secondarySale.create).toHaveBeenCalled();
+    expect(mocks.tx.secondaryListing.updateMany).toHaveBeenCalledWith({
+      where: { id: 'lst_1', status: 'PENDING_PAYMENT' },
+      data: { status: 'SOLD', soldAt: expect.any(Date) },
+    });
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_1', status: 'PENDING' },
+      data: {
+        status: 'PAID',
+        paidAt: expect.any(Date),
+        paymentChannel: 'SIMULATE',
+      },
+    });
+
+    // Jalur primer (upsert baris saldo 0 milik pembeli) TIDAK boleh dipakai.
+    expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'buyer_1' } })
+    );
+    expect(mocks.tx.investorBalance.upsert).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: 'seller_1' } })
+    );
+  });
+
+  it('cancel pada SECONDARY_BUY mengembalikan listing ACTIVE lewat releaseSecondaryPending', async () => {
+    const res = await simulatePOST(
+      simulateRequest({ orderId: 'SEC-1', action: 'cancel' })
+    );
+
+    expect(res.status).toBe(200);
+    const json = await res.json();
+    expect(json.status).toBe('cancelled');
+
+    expect(mocks.tx.transaction.updateMany).toHaveBeenCalledWith({
+      where: { id: 'trx_1', status: 'PENDING' },
+      data: { status: 'CANCELLED', secondaryListingId: null },
+    });
+    expect(mocks.tx.secondaryListing.updateMany).toHaveBeenCalledWith({
+      where: { id: 'lst_1', status: 'PENDING_PAYMENT' },
+      data: { status: 'ACTIVE' },
+    });
+    expect(releaseReservation).not.toHaveBeenCalled();
+    expect(mocks.tx.lotOwnership.update).not.toHaveBeenCalled();
+  });
+
+  it('cancel pada transaksi non-secondary tetap memakai releaseReservation', async () => {
+    mocks.prisma.transaction.findUnique.mockResolvedValue({
+      id: 'trx_p',
+      orderId: 'TRX-P',
+      userId: 'buyer_1',
+      packageId: 'pkg_1',
+      type: 'BUY',
+      status: 'PENDING',
+      amount: 50000,
+      secondaryListingId: null,
+      lotCount: 5,
+    });
+
+    const res = await simulatePOST(
+      simulateRequest({ orderId: 'TRX-P', action: 'cancel' })
     );
 
     expect(res.status).toBe(200);
