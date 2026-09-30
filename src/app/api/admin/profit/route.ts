@@ -175,12 +175,38 @@ export async function POST(request: NextRequest) {
     if (actionParse.success) {
       const id = actionParse.data.id;
 
+      // Bedakan "tidak ada" dari "sudah pernah dibagikan": klaim ber-guard
+      // count 0 terjadi pada keduanya, jadi id dicek dulu sebelum transaksi.
+      const existing = await prisma.profitDistribution.findUnique({
+        where: { id },
+      });
+
+      if (!existing) {
+        return NextResponse.json(
+          { error: 'Distribusi tidak ditemukan' },
+          { status: 404 }
+        );
+      }
+
       // Klaim status dan kredit investor dalam satu transaksi. Bila distribusi
       // sudah pernah dibagikan, `distributeAndCredit` mengembalikan false dan
       // tidak ada saldo yang dikredit ulang.
-      const credited = await prisma.$transaction(async (tx) =>
-        distributeAndCredit(tx, id)
-      );
+      let credited: boolean;
+      try {
+        credited = await prisma.$transaction(async (tx) =>
+          distributeAndCredit(tx, id)
+        );
+      } catch (error) {
+        // `orderId` payout unik: P2002 berarti kredit untuk distribusi ini sudah
+        // pernah tercatat. Petakan ke 409 yang jujur, bukan 500 generik.
+        if ((error as { code?: string })?.code === 'P2002') {
+          return NextResponse.json(
+            { error: 'Distribusi ini sudah pernah dibagikan' },
+            { status: 409 }
+          );
+        }
+        throw error;
+      }
 
       if (!credited) {
         return NextResponse.json(
@@ -195,7 +221,7 @@ export async function POST(request: NextRequest) {
 
       if (!updated) {
         return NextResponse.json(
-          { error: 'Distribusi profit tidak ditemukan' },
+          { error: 'Distribusi tidak ditemukan' },
           { status: 404 }
         );
       }

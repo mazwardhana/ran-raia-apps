@@ -273,6 +273,21 @@ describe('distributeAndCredit', () => {
     );
     expect(mocks.transaction.create).toHaveBeenCalledTimes(2);
   });
+
+  it('P2002 pada transaction.create diteruskan dan tidak ada upsert sesudahnya', async () => {
+    const duplicate = Object.assign(new Error('Unique constraint failed'), {
+      code: 'P2002',
+    });
+    mocks.transaction.create.mockRejectedValueOnce(duplicate);
+
+    await expect(distributeAndCredit(tx, 'd1')).rejects.toMatchObject({
+      code: 'P2002',
+    });
+
+    // Kredit untuk baris yang gagal tidak pernah ditulis; sisa baris juga tidak
+    // diproses karena error dibiarkan melempar (rollback oleh $transaction).
+    expect(mocks.investorBalance.upsert).not.toHaveBeenCalled();
+  });
 });
 
 // ===========================================================================
@@ -317,6 +332,36 @@ describe('POST /api/admin/profit — aksi distribute', () => {
     expect(json.error).toBe('Distribusi ini sudah pernah dibagikan');
     expect(mocks.transaction.create).not.toHaveBeenCalled();
     expect(mocks.investorBalance.upsert).not.toHaveBeenCalled();
+    expect(createNotification).not.toHaveBeenCalled();
+  });
+
+  it('membalas 404 bila id distribusi tidak ditemukan', async () => {
+    mocks.profitDistribution.findUnique.mockResolvedValue(null);
+
+    const res = await profitPOST(
+      jsonRequest({ action: 'distribute', id: 'tidak_ada' })
+    );
+
+    expect(res.status).toBe(404);
+    const json = await res.json();
+    expect(json.error).toBe('Distribusi tidak ditemukan');
+    expect(mocks.prisma.$transaction).not.toHaveBeenCalled();
+    expect(mocks.transaction.create).not.toHaveBeenCalled();
+    expect(mocks.investorBalance.upsert).not.toHaveBeenCalled();
+  });
+
+  it('memetakan P2002 saat kredit ke 409, bukan 500', async () => {
+    mocks.transaction.create.mockRejectedValueOnce(
+      Object.assign(new Error('Unique constraint failed'), { code: 'P2002' })
+    );
+
+    const res = await profitPOST(
+      jsonRequest({ action: 'distribute', id: 'd1' })
+    );
+
+    expect(res.status).toBe(409);
+    const json = await res.json();
+    expect(json.error).toBe('Distribusi ini sudah pernah dibagikan');
     expect(createNotification).not.toHaveBeenCalled();
   });
 });
