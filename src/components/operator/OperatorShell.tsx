@@ -13,6 +13,7 @@ import {
   IconPackage,
   IconPaw,
   IconSettings,
+  IconUsers,
 } from '@tabler/icons-react';
 import { signOut } from 'next-auth/react';
 import Link from 'next/link';
@@ -34,6 +35,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/op/taawun', label: "Ta'awun", icon: IconHeartHandshake },
   { href: '/op/secondary', label: 'Secondary', icon: IconExchange },
   { href: '/op/penarikan', label: 'Penarikan', icon: IconCash },
+  { href: '/op/pengguna', label: 'Pengguna', icon: IconUsers },
   { href: '/op/settings', label: 'Pengaturan', icon: IconSettings },
 ];
 
