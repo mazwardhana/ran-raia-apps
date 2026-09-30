@@ -16,6 +16,9 @@ const mocks = vi.hoisted(() => {
     secondarySale: { create: vi.fn() },
     transaction: { create: vi.fn(), findUnique: vi.fn(), updateMany: vi.fn() },
     investorBalance: { upsert: vi.fn() },
+    lotOwnership: { deleteMany: vi.fn(), updateMany: vi.fn() },
+    fullOwnership: { deleteMany: vi.fn(), updateMany: vi.fn() },
+    user: { upsert: vi.fn() },
   };
 
   const prisma = {
@@ -61,9 +64,13 @@ beforeEach(() => {
     async (callback: (client: typeof mocks.tx) => unknown) => callback(mocks.tx)
   );
   mocks.tx.secondaryListing.update.mockResolvedValue({});
+  mocks.tx.secondaryListing.updateMany.mockResolvedValue({ count: 1 });
   mocks.tx.secondarySale.create.mockResolvedValue({ id: 'sale_1' });
   mocks.tx.transaction.create.mockResolvedValue({ id: 'trx_takeover' });
   mocks.tx.investorBalance.upsert.mockResolvedValue({});
+  mocks.tx.lotOwnership.updateMany.mockResolvedValue({ count: 1 });
+  mocks.tx.fullOwnership.updateMany.mockResolvedValue({ count: 1 });
+  mocks.tx.user.upsert.mockResolvedValue({ id: 'treasury_1' });
   vi.mocked(releaseSecondaryPending).mockResolvedValue(undefined);
 
   vi.spyOn(console, 'log').mockImplementation(() => {});
@@ -106,7 +113,7 @@ describe('expireStaleListings — hanya menyapu listing ACTIVE', () => {
 
     await expireStaleListings();
 
-    const takenOver = mocks.tx.secondaryListing.update.mock.calls.map(
+    const takenOver = mocks.tx.secondaryListing.updateMany.mock.calls.map(
       (call) => (call[0] as { where: { id: string } }).where.id
     );
     expect(takenOver).toContain('stale');

@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
 import { releaseSecondaryPending } from '@/lib/secondary-settlement';
+import { ensureTreasuryUser } from '@/lib/treasury';
 
 /**
  * Calculate the admin fee for a secondary listing.
@@ -41,7 +42,9 @@ export async function calculateFee(
  * 
  * Runs cron-style: called on read operations (GET /api/secondary).
  * Changes status from ACTIVE to TAKEOVER for expired listings,
- * creates SecondarySale records with buyerId = 'SYSTEM' for Raia buyback.
+ * creates SecondarySale records with buyerId = 'SYSTEM' for Raia buyback,
+ * and moves the seller's ownership row to the Raia treasury account
+ * (Ruling 17: only the seller's rows — never every investor on the package).
  */
 export async function expireStaleListings(): Promise<void> {
   try {
@@ -65,16 +68,50 @@ export async function expireStaleListings(): Promise<void> {
     for (const listing of staleListings) {
       try {
         await prisma.$transaction(async (tx) => {
-          // 1. Update listing status to TAKEOVER
-          await tx.secondaryListing.update({
-            where: { id: listing.id },
+          // 1. Klaim listing secara atomik: hanya ACTIVE yang boleh menjadi
+          //    TAKEOVER (Ruling 18). Pembalap yang kalah mendapat count 0 dan
+          //    tidak boleh memindahkan aset atau mengkredit saldo.
+          const claimed = await tx.secondaryListing.updateMany({
+            where: { id: listing.id, status: 'ACTIVE' },
             data: {
               status: 'TAKEOVER',
               takeoverByRaia: true,
             },
           });
 
-          // 2. Create SecondarySale record with SYSTEM as buyer (Raia takeover)
+          if (claimed.count === 0) return;
+
+          // 2. Pindahkan HANYA aset penjual ke akun treasury (Ruling 17).
+          //    FULL: baris FullOwnership penjual; LOT: baris lot dengan rentang
+          //    yang persis sama. Guard `userId: listing.sellerId` wajib agar
+          //    kepemilikan investor lain pada paket yang sama tidak ikut pindah.
+          const treasury = await ensureTreasuryUser(tx);
+
+          if (listing.ownershipType === 'FULL') {
+            await tx.fullOwnership.updateMany({
+              where: {
+                packageId: listing.packageId,
+                userId: listing.sellerId,
+              },
+              data: { userId: treasury.id },
+            });
+          } else {
+            if (listing.lotStart === null || listing.lotEnd === null) {
+              throw new Error('Rentang lot listing tidak lengkap');
+            }
+
+            await tx.lotOwnership.updateMany({
+              where: {
+                packageId: listing.packageId,
+                userId: listing.sellerId,
+                lotStart: listing.lotStart,
+                lotEnd: listing.lotEnd,
+              },
+              data: { userId: treasury.id },
+            });
+          }
+
+          // 3. Create SecondarySale record with SYSTEM as buyer (Raia takeover)
           await tx.secondarySale.create({
             data: {
               listingId: listing.id,
@@ -84,7 +121,7 @@ export async function expireStaleListings(): Promise<void> {
             },
           });
 
-          // 3. Create Transaction TAKEOVER for Raia buyback at 100% par
+          // 4. Create Transaction TAKEOVER for Raia buyback at 100% par
           await tx.transaction.create({
             data: {
               orderId: `TAKEOVER-${listing.id}-${Date.now()}`,
@@ -97,7 +134,7 @@ export async function expireStaleListings(): Promise<void> {
             },
           });
 
-          // 4. Credit seller InvestorBalance (100% payout for takeover)
+          // 5. Credit seller InvestorBalance (100% payout for takeover)
           await tx.investorBalance.upsert({
             where: { userId: listing.sellerId },
             create: {
