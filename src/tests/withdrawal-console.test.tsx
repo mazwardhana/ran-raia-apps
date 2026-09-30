@@ -233,6 +233,39 @@ describe('Konsol penarikan operator', () => {
     });
   });
 
+  it('menolak penarikan memanggil PATCH REJECTED lalu memuat ulang daftar', async () => {
+    await renderConsole();
+    await screen.findByText('@budi');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Tolak' }));
+
+    // Dialog konfirmasi muncul sebelum aksi dikirim.
+    expect(
+      await screen.findByText('Tolak permintaan penarikan ini?')
+    ).toBeInTheDocument();
+    expect(getRequests().some((call) => call[1]?.method === 'PATCH')).toBe(false);
+
+    await userEvent.click(screen.getByRole('button', { name: 'Ya, Tolak' }));
+
+    await waitFor(() => {
+      const patch = fetchMock.mock.calls.find(
+        (call) => (call[1] as RequestInit | undefined)?.method === 'PATCH'
+      );
+      expect(patch).toBeTruthy();
+      expect(String(patch![0])).toBe('/api/admin/withdrawals/wd-pending');
+      expect(JSON.parse(String((patch![1] as RequestInit).body))).toEqual({
+        action: 'REJECTED',
+      });
+    });
+
+    await waitFor(() => {
+      const gets = getRequests().filter(
+        (call) => ((call[1] as RequestInit | undefined)?.method || 'GET').toUpperCase() === 'GET'
+      );
+      expect(gets.length).toBeGreaterThanOrEqual(2);
+    });
+  });
+
   it('menandai dibayar mengirim aksi PAID untuk baris APPROVED', async () => {
     await renderConsole();
     await screen.findByText('@sari');
@@ -264,11 +297,19 @@ describe('Konsol penarikan operator', () => {
   });
 
   it('menampilkan error state saat pengambilan data gagal', async () => {
-    await renderConsole(makeFailingFetch());
+    const failing = makeFailingFetch();
+    await renderConsole(failing);
 
     expect(
       await screen.findByText('Gagal memuat daftar penarikan')
     ).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: 'Coba lagi' })).toBeInTheDocument();
+
+    // "Coba lagi" menjalankan ulang load(): GET kedua harus terkirim.
+    expect(failing).toHaveBeenCalledTimes(1);
+    await userEvent.click(screen.getByRole('button', { name: 'Coba lagi' }));
+
+    await waitFor(() => {
+      expect(failing).toHaveBeenCalledTimes(2);
+    });
   });
 });
