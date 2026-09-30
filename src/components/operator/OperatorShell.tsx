@@ -4,6 +4,7 @@ import { Burger, Button, Drawer, Stack, Text } from '@mantine/core';
 import { useDisclosure, useMediaQuery } from '@mantine/hooks';
 import {
   IconBuildingWarehouse,
+  IconCash,
   IconChartBar,
   IconExchange,
   IconHeartHandshake,
@@ -32,6 +33,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: '/op/profit', label: 'Profit', icon: IconChartBar },
   { href: '/op/taawun', label: "Ta'awun", icon: IconHeartHandshake },
   { href: '/op/secondary', label: 'Secondary', icon: IconExchange },
+  { href: '/op/penarikan', label: 'Penarikan', icon: IconCash },
   { href: '/op/settings', label: 'Pengaturan', icon: IconSettings },
 ];
 
