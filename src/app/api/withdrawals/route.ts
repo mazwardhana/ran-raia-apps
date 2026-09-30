@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getCurrentUser } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { withdrawalSchema } from '@/lib/validation';
+import { createWithdrawal } from '@/lib/withdrawal';
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,32 +25,21 @@ export async function POST(request: NextRequest) {
 
     const { amount, bankName, bankAccount, bankHolder } = validation.data;
 
-    const balance = await prisma.investorBalance.findUnique({
-      where: { userId: user.id },
-      select: { availableBalance: true },
+    const withdrawal = await createWithdrawal(user.id, amount, {
+      bankName,
+      bankAccount,
+      bankHolder,
     });
 
-    if (!balance || balance.availableBalance < amount) {
+    return NextResponse.json({ id: withdrawal.id }, { status: 201 });
+  } catch (error) {
+    if (error instanceof Error && error.message === 'SALDO_TIDAK_CUKUP') {
       return NextResponse.json(
         { error: 'Saldo tidak mencukupi' },
         { status: 400 }
       );
     }
 
-    const withdrawal = await prisma.withdrawal.create({
-      data: {
-        userId: user.id,
-        amount,
-        bankName,
-        bankAccount,
-        bankHolder,
-        status: 'PENDING',
-      },
-      select: { id: true },
-    });
-
-    return NextResponse.json({ id: withdrawal.id }, { status: 201 });
-  } catch (error) {
     console.error('Withdrawal creation error:', error);
     return NextResponse.json(
       { error: 'Failed to create withdrawal' },
