@@ -42,6 +42,7 @@ export async function createWithdrawal(
         bankAccount: destination.bankAccount,
         bankHolder: destination.bankHolder,
         status: 'PENDING',
+        reservedAt: new Date(),
       },
     });
   });
@@ -55,7 +56,11 @@ export async function createWithdrawal(
  * memproses satu penarikan dua kali (mis. dua kali refund).
  *
  * - `PENDING → APPROVED`: set `approvedAt`/`approvedById`, saldo tetap.
- * - `PENDING → REJECTED`: kembalikan `availableBalance` + catat `note`.
+ * - `PENDING → REJECTED`: kembalikan `availableBalance` + catat `note` — tetapi
+ *   **hanya bila baris ini benar-benar direservasi** (`reservedAt` terisi).
+ *   Baris PENDING lama (dibuat sebelum reservasi diberlakukan) tidak pernah
+ *   memotong saldo, jadi mengembalikannya akan mengkredit uang yang tidak
+ *   pernah diambil. Status tetap dipindahkan dan `note` tetap dicatat.
  * - `APPROVED → PAID`: set `paidAt`, saldo tetap (dana sudah dikunci saat ajuan).
  *
  * Harus dipanggil dengan Prisma transaction client supaya klaim status dan
@@ -103,6 +108,10 @@ export async function settleWithdrawal(
   if (claimed.count === 0 || !withdrawal) {
     throw new Error('TRANSISI_TIDAK_SAH');
   }
+
+  // Hanya kembalikan dana yang memang pernah dikunci saat pengajuan. Baris
+  // PENDING warisan (reservedAt null) tidak pernah memotong saldo.
+  if (!withdrawal.reservedAt) return;
 
   await tx.investorBalance.update({
     where: { userId: withdrawal.userId },

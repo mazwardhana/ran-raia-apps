@@ -409,6 +409,7 @@ model Withdrawal {
   bankHolder String
   status    WithdrawalStatus @default(PENDING)
   note      String?
+  reservedAt   DateTime?
   approvedAt   DateTime?
   approvedById String?
   paidAt    DateTime?

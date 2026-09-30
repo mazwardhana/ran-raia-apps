@@ -102,6 +102,7 @@ beforeEach(async () => {
     userId: 'usr_1',
     amount: 100000,
     status: 'PENDING',
+    reservedAt: new Date('2026-01-01T00:00:00Z'),
   });
 
   const { requireRole, getCurrentUser } = await import('@/lib/auth');
@@ -159,6 +160,7 @@ describe('createWithdrawal', () => {
         bankAccount: destination.bankAccount,
         bankHolder: destination.bankHolder,
         status: 'PENDING',
+        reservedAt: expect.any(Date),
       },
     });
   });
@@ -190,6 +192,7 @@ describe('settleWithdrawal', () => {
       userId: 'usr_1',
       amount: 100000,
       status: 'PENDING',
+      reservedAt: new Date('2026-01-01T00:00:00Z'),
     });
 
     await settleWithdrawal(mocks.tx as never, 'wd_1', 'REJECTED', 'op_1');
@@ -204,18 +207,51 @@ describe('settleWithdrawal', () => {
     });
   });
 
-  it('REJECTED: jumlah yang dikembalikan diambil dari baca sebelum update', async () => {
-    // Bila implementasi membaca ulang setelah update, amount berubah dan
-    // pengembalian jadi salah. Nilai baca awal harus yang dipakai.
+  it('REJECTED pada baris warisan (reservedAt null) TIDAK mengembalikan saldo', async () => {
+    // Baris PENDING lama dibuat sebelum reservasi diberlakukan: saldo tidak
+    // pernah dipotong, jadi tidak boleh dikembalikan. Status tetap berpindah.
+    mocks.tx.withdrawal.findUnique.mockResolvedValue({
+      id: 'wd_lama',
+      userId: 'usr_1',
+      amount: 100000,
+      status: 'PENDING',
+      reservedAt: null,
+    });
+
+    await settleWithdrawal(mocks.tx as never, 'wd_lama', 'REJECTED', 'op_1');
+
+    expect(mocks.tx.withdrawal.updateMany).toHaveBeenCalledWith({
+      where: { id: 'wd_lama', status: 'PENDING' },
+      data: { status: 'REJECTED', note: 'Ditolak operator' },
+    });
+    expect(mocks.tx.investorBalance.update).not.toHaveBeenCalled();
+  });
+
+  it('REJECTED: amount diambil dari baca sebelum update (urutan findUnique → updateMany)', async () => {
+    // Bila implementasi membaca ulang setelah update, amount bisa berubah dan
+    // pengembalian jadi salah. Pastikan findUnique mendahului updateMany dan
+    // nominal yang dipakai adalah hasil baca awal.
     mocks.tx.withdrawal.findUnique.mockResolvedValueOnce({
       id: 'wd_1',
       userId: 'usr_1',
       amount: 100000,
       status: 'PENDING',
+      reservedAt: new Date('2026-01-01T00:00:00Z'),
+    });
+    // Bila kode salah membaca ulang, nilai kedua yang berbeda ini akan terpakai.
+    mocks.tx.withdrawal.findUnique.mockResolvedValue({
+      id: 'wd_1',
+      userId: 'usr_1',
+      amount: 999999,
+      status: 'REJECTED',
+      reservedAt: new Date('2026-01-01T00:00:00Z'),
     });
 
     await settleWithdrawal(mocks.tx as never, 'wd_1', 'REJECTED', 'op_1');
 
+    expect(mocks.tx.withdrawal.findUnique.mock.invocationCallOrder[0]).toBeLessThan(
+      mocks.tx.withdrawal.updateMany.mock.invocationCallOrder[0]
+    );
     expect(mocks.tx.investorBalance.update).toHaveBeenCalledWith({
       where: { userId: 'usr_1' },
       data: { availableBalance: { increment: 100000 } },
