@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { DELETE } from '@/app/api/secondary/[id]/route';
 import { getCurrentUser, type CurrentUser } from '@/lib/auth';
+import { expireStaleListings } from '@/lib/secondary';
 
 // ---------------------------------------------------------------------------
 // Mocks — pola yang sama dengan src/tests/secondary-list.test.ts.
@@ -20,6 +21,7 @@ const mocks = vi.hoisted(() => {
 
 vi.mock('@/lib/prisma', () => ({ prisma: mocks.prisma }));
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
+vi.mock('@/lib/secondary', () => ({ expireStaleListings: vi.fn() }));
 
 const owner: CurrentUser = {
   id: 'usr_owner',
@@ -41,6 +43,7 @@ function deleteContext(id = 'lst_1') {
 beforeEach(() => {
   vi.clearAllMocks();
   vi.mocked(getCurrentUser).mockResolvedValue(owner);
+  vi.mocked(expireStaleListings).mockResolvedValue(undefined);
   mocks.prisma.secondaryListing.updateMany.mockResolvedValue({ count: 1 });
 });
 
@@ -106,7 +109,52 @@ describe('DELETE /api/secondary/[id] — transisi tidak sah → 409', () => {
 });
 
 // ---------------------------------------------------------------------------
-// 3. Tanpa autentikasi → 401
+// 3. Sapuan kedaluwarsa sebelum pembatalan (listing kedaluwarsa → TAKEOVER)
+// ---------------------------------------------------------------------------
+
+describe('DELETE /api/secondary/[id] — sapuan kedaluwarsa lebih dulu', () => {
+  it('memanggil expireStaleListings sebelum transisi pembatalan', async () => {
+    await DELETE(deleteRequest('lst_1'), deleteContext('lst_1'));
+
+    expect(expireStaleListings).toHaveBeenCalledTimes(1);
+
+    // Urutan: sapuan harus selesai sebelum updateMany dijalankan.
+    const sweepOrder = vi.mocked(expireStaleListings).mock.invocationCallOrder[0];
+    const updateOrder =
+      mocks.prisma.secondaryListing.updateMany.mock.invocationCallOrder[0];
+    expect(sweepOrder).toBeLessThan(updateOrder);
+  });
+
+  it('listing kedaluwarsa yang disapu menjadi TAKEOVER tidak bisa dibatalkan → 409', async () => {
+    // Emulasi sapuan: baris yang lewat expiresAt berubah jadi TAKEOVER, jadi
+    // guard `status: 'ACTIVE'` tidak lagi cocok.
+    vi.mocked(expireStaleListings).mockImplementation(async () => {
+      mocks.prisma.secondaryListing.updateMany.mockResolvedValue({ count: 0 });
+    });
+
+    const response = await DELETE(
+      deleteRequest('lst_expired'),
+      deleteContext('lst_expired')
+    );
+    const body = await response.json();
+
+    expect(response.status).toBe(409);
+    expect(body.error).toBe('Listing tidak bisa dibatalkan');
+    expect(mocks.prisma.lotOwnership.updateMany).not.toHaveBeenCalled();
+    expect(mocks.prisma.fullOwnership.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('tidak menyapu saat tidak terautentikasi (401 lebih dulu)', async () => {
+    vi.mocked(getCurrentUser).mockResolvedValue(null);
+
+    await DELETE(deleteRequest('lst_1'), deleteContext('lst_1'));
+
+    expect(expireStaleListings).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+// 4. Tanpa autentikasi → 401
 // ---------------------------------------------------------------------------
 
 describe('DELETE /api/secondary/[id] — tanpa autentikasi', () => {

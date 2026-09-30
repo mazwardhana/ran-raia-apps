@@ -252,7 +252,7 @@ export default function SecondaryPage() {
                           <StatusBadge status={row.status ?? 'ACTIVE'} />
                         </Table.Td>
                         <Table.Td>
-                          {row.isMine ? (
+                          {row.isMine && row.status === 'ACTIVE' ? (
                             <Button
                               size="xs"
                               variant="default"
@@ -399,10 +399,15 @@ export default function SecondaryPage() {
               variant="default"
               onClick={() => setCancelTarget(null)}
               disabled={submitting}
+              styles={{ root: { minHeight: 44 } }}
             >
               Batal
             </Button>
-            <Button onClick={submitCancel} loading={submitting}>
+            <Button
+              onClick={submitCancel}
+              loading={submitting}
+              styles={{ root: { minHeight: 44 } }}
+            >
               Konfirmasi batalkan
             </Button>
           </Group>
