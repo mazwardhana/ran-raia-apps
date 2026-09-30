@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { expireStaleListings, calculateFee } from '@/lib/secondary';
+import { expireStaleListings, expireStalePendingPayments, calculateFee } from '@/lib/secondary';
 import { createSnapToken, isSimulateMode } from '@/lib/midtrans';
 
 /**
@@ -30,6 +30,10 @@ export async function POST(request: NextRequest) {
 
     // Run expiry check first (stale listings become TAKEOVER)
     await expireStaleListings();
+
+    // Lepas pembelian PENDING yang sudah kedaluwarsa supaya listing terkunci
+    // kembali ACTIVE sebelum pembeli baru mencoba (mirror GET /api/secondary).
+    await expireStalePendingPayments();
 
     // Fetch listing
     const listing = await prisma.secondaryListing.findUnique({

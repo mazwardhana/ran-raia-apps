@@ -24,7 +24,7 @@ interface TreasuryClient {
         passwordHash: string;
         role: 'SYSTEM';
       };
-      update: { role: 'SYSTEM' };
+      update: { role: 'SYSTEM'; passwordHash: string };
     }): Promise<{ id: string }>;
   };
 }
@@ -33,7 +33,9 @@ export async function ensureTreasuryUser(client: TreasuryClient): Promise<{ id: 
   // Kata sandi 32 byte acak yang hanya di-hash, tidak pernah disimpan maupun
   // dibagikan — akun treasury tidak bisa dipakai untuk masuk (login memakai
   // bcrypt.compare terhadap hash ini, dan tidak ada seorang pun yang tahu
-  // plaintext-nya).
+  // plaintext-nya). Hash ditulis ulang setiap upsert (termasuk saat update)
+  // supaya kredensial yang mungkin sudah terdaftar sebelumnya (mis. lewat
+  // /api/auth/register) tidak pernah tersisa valid.
   const passwordHash = await bcrypt.hash(randomBytes(32).toString('hex'), PASSWORD_ROUNDS);
 
   return client.user.upsert({
@@ -45,6 +47,6 @@ export async function ensureTreasuryUser(client: TreasuryClient): Promise<{ id: 
       passwordHash,
       role: 'SYSTEM',
     },
-    update: { role: 'SYSTEM' },
+    update: { role: 'SYSTEM', passwordHash },
   });
 }

@@ -98,10 +98,18 @@ export async function completeSecondaryPurchase(
   });
 
   // Transisi status ber-guard; listing hanya boleh SOLD dari PENDING_PAYMENT.
-  await tx.secondaryListing.updateMany({
+  // Bila klaim gagal (mis. sapuan kedaluwarsa sudah melepasnya ke ACTIVE),
+  // aset dan saldo di transaksi ini sudah tersentuh → lempar supaya seluruh
+  // `$transaction` rollback, bukan menyelesaikan penjualan atas listing yang
+  // bukan lagi milik pembeli.
+  const listingClaimed = await tx.secondaryListing.updateMany({
     where: { id: listing.id, status: 'PENDING_PAYMENT' },
     data: { status: 'SOLD', soldAt: new Date() },
   });
+
+  if (listingClaimed.count === 0) {
+    throw new Error('Listing tidak lagi PENDING_PAYMENT saat settlement');
+  }
 
   const sellerPayout = listing.listingPrice - transaction.adminFee;
   await tx.investorBalance.upsert({

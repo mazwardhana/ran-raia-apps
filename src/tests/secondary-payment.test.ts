@@ -3,7 +3,7 @@ import { NextRequest } from 'next/server';
 
 import { POST } from '@/app/api/secondary/buy/route';
 import { getCurrentUser } from '@/lib/auth';
-import { expireStaleListings, calculateFee } from '@/lib/secondary';
+import { expireStaleListings, expireStalePendingPayments, calculateFee } from '@/lib/secondary';
 import { createSnapToken, isSimulateMode } from '@/lib/midtrans';
 
 // ---------------------------------------------------------------------------
@@ -53,6 +53,7 @@ vi.mock('@/lib/prisma', () => ({ prisma: mocks.prisma }));
 vi.mock('@/lib/auth', () => ({ getCurrentUser: vi.fn() }));
 vi.mock('@/lib/secondary', () => ({
   expireStaleListings: vi.fn(),
+  expireStalePendingPayments: vi.fn(),
   calculateFee: vi.fn(),
 }));
 vi.mock('@/lib/midtrans', () => ({
@@ -256,6 +257,11 @@ describe('POST /api/secondary/buy — payment flow', () => {
   it('membersihkan listing kedaluwarsa sebelum memproses', async () => {
     await POST(buyRequest());
     expect(expireStaleListings).toHaveBeenCalledOnce();
+  });
+
+  it('melepas pembelian PENDING kedaluwarsa sebelum memproses', async () => {
+    await POST(buyRequest());
+    expect(expireStalePendingPayments).toHaveBeenCalledOnce();
   });
 });
 

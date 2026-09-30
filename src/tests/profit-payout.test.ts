@@ -165,6 +165,29 @@ describe('splitInvestorShare', () => {
       })
     ).toEqual([]);
   });
+
+  it('menggabungkan beberapa rentang lot milik pengguna yang sama menjadi satu baris', () => {
+    // Pembelian lot menumpuk → beberapa baris LotOwnership untuk satu userId.
+    // orderId payout hanya memakai userId, jadi harus digabung agar tidak P2002.
+    const lines = splitInvestorShare({
+      investorShare: 400_000,
+      totalLots: 1000,
+      lotOwners: [
+        { userId: 'a', lotStart: 1, lotEnd: 100 },
+        { userId: 'b', lotStart: 101, lotEnd: 150 },
+        { userId: 'a', lotStart: 500, lotEnd: 550 },
+      ],
+      fullOwners: [],
+    });
+
+    expect(lines).toEqual([
+      { userId: 'a', amount: 40_000 + 20_400 },
+      { userId: 'b', amount: 20_000 },
+    ]);
+
+    const orderIds = lines.map((line) => payoutOrderId('d1', line.userId));
+    expect(new Set(orderIds).size).toBe(orderIds.length);
+  });
 });
 
 // ===========================================================================

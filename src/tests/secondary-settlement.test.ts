@@ -284,6 +284,17 @@ describe('completeSecondaryPurchase', () => {
     expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();
   });
 
+  it('melempar bila klaim listing gagal (listing bukan lagi PENDING_PAYMENT)', async () => {
+    mocks.tx.secondaryListing.updateMany.mockResolvedValue({ count: 0 });
+
+    await expect(completeSecondaryPurchase(tx, 'trx_1')).rejects.toThrow(
+      'Listing tidak lagi PENDING_PAYMENT saat settlement'
+    );
+
+    // Aset/saldo sudah tersentuh di transaksi ini; error memaksa rollback.
+    expect(mocks.tx.investorBalance.upsert).not.toHaveBeenCalled();
+  });
+
   it('idempoten: bila klaim ber-guard count 0, tidak menyentuh aset maupun saldo', async () => {
     mocks.tx.transaction.updateMany.mockResolvedValue({ count: 0 });
 

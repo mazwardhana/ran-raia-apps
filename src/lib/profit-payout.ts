@@ -21,6 +21,12 @@ export function payoutOrderId(distId: string, userId: string): string {
  * - Selain itu pro-rata per lot: `floor(investorShare * lotCount / totalLots)`.
  *   Baris bernilai nol dibuang; sisa pembulatan tidak dibagikan (tetap di
  *   platform) agar jumlah kredit tidak pernah melebihi `investorShare`.
+ *
+ * Hasil selalu digabung per `userId`: pemilik bisa punya beberapa baris
+ * `LotOwnership` (pembelian lot menumpuk) dan `payoutOrderId` hanya memakai
+ * `userId`, sehingga dua baris untuk pengguna yang sama akan bertabrakan
+ * (`orderId @unique` → P2002). Penggabungan di sini memastikan setiap pengguna
+ * muncul tepat sekali dengan jumlah utuh.
  */
 export function splitInvestorShare(params: {
   investorShare: number;
@@ -30,18 +36,29 @@ export function splitInvestorShare(params: {
 }): PayoutLine[] {
   const { investorShare, totalLots, lotOwners, fullOwners } = params;
 
-  if (fullOwners.length > 0) {
-    return [{ userId: fullOwners[0].userId, amount: investorShare }];
+  const raw: PayoutLine[] =
+    fullOwners.length > 0
+      ? [{ userId: fullOwners[0].userId, amount: investorShare }]
+      : totalLots <= 0
+        ? []
+        : lotOwners.map((owner) => {
+            const lotCount = owner.lotEnd - owner.lotStart + 1;
+            const amount = Math.floor((investorShare * lotCount) / totalLots);
+            return { userId: owner.userId, amount };
+          });
+
+  const totals = new Map<string, number>();
+  const order: string[] = [];
+  for (const line of raw) {
+    if (!totals.has(line.userId)) {
+      totals.set(line.userId, 0);
+      order.push(line.userId);
+    }
+    totals.set(line.userId, (totals.get(line.userId) ?? 0) + line.amount);
   }
 
-  if (totalLots <= 0) return [];
-
-  return lotOwners
-    .map((owner) => {
-      const lotCount = owner.lotEnd - owner.lotStart + 1;
-      const amount = Math.floor((investorShare * lotCount) / totalLots);
-      return { userId: owner.userId, amount };
-    })
+  return order
+    .map((userId) => ({ userId, amount: totals.get(userId) ?? 0 }))
     .filter((line) => line.amount > 0);
 }
 

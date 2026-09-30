@@ -11,5 +11,10 @@ describe('ensureTreasuryUser', () => {
     expect(TREASURY_USERNAME).toBe('raia_treasury');
     expect(args.where.username).toBe('raia_treasury');
     expect(args.create.role).toBe('SYSTEM');
+    expect(args.update.role).toBe('SYSTEM');
+    // Sandi acak baru ditulis ulang saat update supaya kredensial lama
+    // (mis. didaftarkan lewat /api/auth/register) tidak pernah tersisa valid.
+    expect(args.update.passwordHash).toBe(args.create.passwordHash);
+    expect(typeof args.update.passwordHash).toBe('string');
   });
 });
