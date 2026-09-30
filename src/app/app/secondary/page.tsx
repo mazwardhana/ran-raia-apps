@@ -10,6 +10,7 @@ import {
   Text,
   Title,
 } from '@mantine/core';
+import { useRouter } from 'next/navigation';
 import { useCallback, useEffect, useState } from 'react';
 
 import { BaseModal } from '@/components/ui/BaseModal';
@@ -66,6 +67,7 @@ function sisaWaktu(expiresAt: string, now: number): string {
 }
 
 export default function SecondaryPage() {
+  const router = useRouter();
   const [listings, setListings] = useState<ListingRow[]>([]);
   const [myAssets, setMyAssets] = useState<MyOwnershipRow[]>([]);
   const [listingDays, setListingDays] = useState(7);
@@ -122,7 +124,11 @@ export default function SecondaryPage() {
         throw new Error(json.error || 'Gagal membeli listing');
       }
       setBuyTarget(null);
-      await load();
+      if (typeof json.redirectUrl === 'string' && json.redirectUrl.trim() !== '') {
+        router.push(json.redirectUrl);
+      } else {
+        await load();
+      }
     } catch (e) {
       setActionError(e instanceof Error ? e.message : 'Gagal membeli listing');
     } finally {
@@ -344,7 +350,9 @@ export default function SecondaryPage() {
             <strong>{buyTarget?.package?.title || 'paket ini'}</strong> pada
             harga par{' '}
             <strong>{buyTarget ? formatRupiah(buyTarget.listingPrice) : ''}</strong>.
-            Kepemilikan langsung berpindah kepada Anda setelah pembelian.
+            Setelah konfirmasi, Anda akan diarahkan ke halaman pembayaran untuk
+            menyelesaikan transaksi. Kepemilikan berpindah setelah pembayaran
+            berhasil.
           </Text>
           {actionError && (
             <Alert color="red" role="alert">
