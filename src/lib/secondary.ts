@@ -1,4 +1,39 @@
+import { Prisma } from '@prisma/client';
 import { prisma } from '@/lib/prisma';
+
+/**
+ * Calculate the admin fee for a secondary listing.
+ * Extracted so both POST /api/secondary/buy (Task 3) and the
+ * payment-callback handler (Task 4) can share the same logic.
+ *
+ * @param listingPrice - The listing price in rupiah
+ * @param tx - Prisma client or transaction client
+ */
+export async function calculateFee(
+  listingPrice: number,
+  tx: Prisma.TransactionClient
+): Promise<{ feePercent: number; feeFlat: number; adminFee: number }> {
+  const [feePercentSetting, feeFlatSetting] = await Promise.all([
+    tx.setting.findUnique({ where: { id: 'secondary_admin_fee_percent' } }),
+    tx.setting.findUnique({ where: { id: 'secondary_admin_fee_flat' } }),
+  ]);
+
+  const feePercentRaw = feePercentSetting
+    ? parseFloat(feePercentSetting.value)
+    : 0;
+  const feeFlatRaw = feeFlatSetting
+    ? parseInt(feeFlatSetting.value, 10)
+    : 0;
+  const feePercent =
+    Number.isFinite(feePercentRaw) && feePercentRaw > 0 ? feePercentRaw : 0;
+  const feeFlat =
+    Number.isInteger(feeFlatRaw) && feeFlatRaw > 0 ? feeFlatRaw : 0;
+
+  const adminFee =
+    feeFlat + Math.floor((listingPrice * feePercent) / 100);
+
+  return { feePercent, feeFlat, adminFee };
+}
 
 /**
  * Expire stale listings that have passed their expiry time.

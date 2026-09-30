@@ -1,11 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getCurrentUser } from '@/lib/auth';
-import { expireStaleListings } from '@/lib/secondary';
+import { expireStaleListings, calculateFee } from '@/lib/secondary';
+import { createSnapToken, isSimulateMode } from '@/lib/midtrans';
 
 /**
  * POST /api/secondary/buy
  * Buy a secondary listing.
+ * Locks the listing at PENDING_PAYMENT and creates a Midtrans snap session.
+ * Ownership transfer happens only on payment settlement (see Task 4).
  * Body: { listingId: string }
  */
 export async function POST(request: NextRequest) {
@@ -81,112 +84,116 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Get admin fee from settings
-    const [feePercentSetting, feeFlatSetting] = await Promise.all([
-      prisma.setting.findUnique({ where: { id: 'secondary_admin_fee_percent' } }),
-      prisma.setting.findUnique({ where: { id: 'secondary_admin_fee_flat' } }),
-    ]);
-
-    const feePercentRaw = feePercentSetting ? parseFloat(feePercentSetting.value) : 0;
-    const feeFlatRaw = feeFlatSetting ? parseInt(feeFlatSetting.value, 10) : 0;
-    const feePercent = Number.isFinite(feePercentRaw) && feePercentRaw > 0 ? feePercentRaw : 0;
-    const feeFlat = Number.isInteger(feeFlatRaw) && feeFlatRaw > 0 ? feeFlatRaw : 0;
-
-    const adminFee = feeFlat + Math.floor((listing.listingPrice * feePercent) / 100);
-    const sellerPayout = listing.listingPrice - adminFee;
-
-    // Execute transaction
-    await prisma.$transaction(async (tx) => {
-      // 1. Create SecondarySale
-      await tx.secondarySale.create({
-        data: {
-          listingId: listing.id,
-          buyerId: user.id,
-          adminFee,
-          finalPrice: listing.listingPrice,
-        },
+    // Execute transaction: lock listing + create payment record
+    const result = await prisma.$transaction(async (tx) => {
+      // 1. Atomic check-and-set: lock listing to PENDING_PAYMENT
+      const updated = await tx.secondaryListing.updateMany({
+        where: { id: listing.id, status: 'ACTIVE' },
+        data: { status: 'PENDING_PAYMENT' },
       });
 
-      // 2. Transfer ownership
-      if (listing.ownershipType === 'FULL') {
-        const ownership = await tx.fullOwnership.findFirst({
-          where: {
-            packageId: listing.packageId,
-            userId: listing.sellerId,
-          },
-        });
-        if (ownership) {
-          await tx.fullOwnership.update({
-            where: { id: ownership.id },
-            data: { userId: user.id },
-          });
-        }
-      } else {
-        if (listing.lotStart === null || listing.lotEnd === null) {
-          throw new Error('Listing lot tidak memiliki rentang lot');
-        }
-        const ownership = await tx.lotOwnership.findFirst({
-          where: {
-            packageId: listing.packageId,
-            userId: listing.sellerId,
-            lotStart: listing.lotStart,
-            lotEnd: listing.lotEnd,
-          },
-        });
-        if (!ownership) {
-          throw new Error('Kepemilikan lot penjual tidak ditemukan');
-        }
-        await tx.lotOwnership.update({
-          where: { id: ownership.id },
-          data: { userId: user.id },
-        });
+      if (updated.count === 0) {
+        throw new Error('LISTING_TAKEN');
       }
 
-      // 3. Mark listing SOLD
-      await tx.secondaryListing.update({
-        where: { id: listing.id },
-        data: {
-          status: 'SOLD',
-          soldAt: new Date(),
-        },
-      });
+      // 2. Calculate admin fee
+      const { adminFee } = await calculateFee(listing.listingPrice, tx);
 
-      // 4. Credit seller InvestorBalance (payout)
-      await tx.investorBalance.upsert({
-        where: { userId: listing.sellerId },
-        create: {
-          userId: listing.sellerId,
-          availableBalance: sellerPayout,
-          withdrawnBalance: 0,
-          totalEarned: sellerPayout,
-        },
-        update: {
-          availableBalance: {
-            increment: sellerPayout,
-          },
-          totalEarned: {
-            increment: sellerPayout,
-          },
-        },
-      });
+      // 3. Create transaction record
+      const orderId = `SEC-${Date.now()}-${Math.random().toString(36).substring(2, 9).toUpperCase()}`;
+      const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
-      // 5. Create Transaction SELL record for seller (audit trail)
-      await tx.transaction.create({
+      const transaction = await tx.transaction.create({
         data: {
-          orderId: `SELL-${listing.id}-${Date.now()}`,
-          userId: listing.sellerId,
+          orderId,
+          userId: user.id,
           packageId: listing.packageId,
-          type: 'SELL',
-          status: 'PAID',
+          type: 'SECONDARY_BUY',
+          status: 'PENDING',
           amount: listing.listingPrice,
           adminFee,
+          midtransOrderId: `MID-${orderId}`,
+          expiredAt: expiresAt,
+          secondaryListingId: listing.id,
         },
       });
+
+      return { orderId, total: listing.listingPrice, transaction };
     });
 
-    return NextResponse.json({ success: true }, { status: 200 });
+    // Handle simulate mode
+    if (isSimulateMode()) {
+      return NextResponse.json({
+        orderId: result.orderId,
+        snapToken: null,
+        redirectUrl: `/app/bayar-simulasi/${result.orderId}`,
+        total: result.total,
+        simulate: true,
+      });
+    }
+
+    // Create Midtrans snap token
+    try {
+      // Email asli pembeli untuk Midtrans
+      const buyer = await prisma.user.findUnique({
+        where: { id: user.id },
+        select: { email: true },
+      });
+
+      const midtransOrderId = `MID-${result.orderId}`;
+      const snapToken = await createSnapToken({
+        orderId: midtransOrderId,
+        grossAmount: result.total,
+        itemDetails: [
+          {
+            id: listing.packageId,
+            name: `Listing ${listing.id}`,
+            price: result.total,
+            quantity: 1,
+          },
+        ],
+        customerDetails: {
+          first_name: user.username,
+          email: buyer?.email,
+        },
+      });
+
+      await prisma.transaction.update({
+        where: { id: result.transaction.id },
+        data: { snapToken: snapToken.token },
+      });
+
+      return NextResponse.json({
+        orderId: result.orderId,
+        snapToken: snapToken.token,
+        redirectUrl: snapToken.redirect_url,
+        total: result.total,
+        simulate: false,
+      });
+    } catch (snapError) {
+      console.error('Gagal membuat sesi pembayaran Midtrans:', snapError);
+
+      // Revert listing to ACTIVE so the buyer can try again
+      await prisma.secondaryListing.updateMany({
+        where: { id: listing.id, status: 'PENDING_PAYMENT' },
+        data: { status: 'ACTIVE' },
+      });
+
+      return NextResponse.json(
+        { error: 'Gagal membuat sesi pembayaran. Listing Anda masih aktif dan bisa dicoba lagi.' },
+        { status: 502 }
+      );
+    }
   } catch (error) {
     console.error('Error buying secondary listing:', error);
+
+    if (error instanceof Error && error.message === 'LISTING_TAKEN') {
+      return NextResponse.json(
+        { error: 'Listing sudah tidak aktif' },
+        { status: 409 }
+      );
+    }
+
     return NextResponse.json(
       { error: 'Terjadi kesalahan server' },
       { status: 500 }
