@@ -348,4 +348,65 @@ describe('POST /api/secondary/buy — snap token flow', () => {
       })
     );
   });
+
+  it('membatalkan transaksi dan melepas tautan listing saat Snap gagal, sehingga retry berhasil', async () => {
+    // Mock stateful: `secondaryListingId` benar-benar unik seperti constraint DB.
+    const linkedListingIds = new Map<string, string>();
+    let seq = 0;
+
+    mocks.prisma.transaction.create.mockImplementation(
+      async (args: {
+        data?: { secondaryListingId?: string | null; orderId?: string };
+      }) => {
+        const listingId = args?.data?.secondaryListingId;
+        const alreadyLinked = listingId
+          ? Array.from(linkedListingIds.values()).some(
+              (linked) => linked === listingId
+            )
+          : false;
+        if (alreadyLinked) {
+          throw Object.assign(
+            new Error('Unique constraint failed on the fields: (`secondaryListingId`)'),
+            { code: 'P2002' }
+          );
+        }
+        const id = `tx_${++seq}`;
+        if (listingId) linkedListingIds.set(id, listingId);
+        return { id, orderId: args?.data?.orderId ?? 'SEC-test-123' };
+      }
+    );
+
+    mocks.prisma.transaction.update.mockImplementation(
+      async (args: {
+        where?: { id?: string };
+        data?: { secondaryListingId?: string | null };
+      }) => {
+        if (args?.data?.secondaryListingId === null && args?.where?.id) {
+          linkedListingIds.delete(args.where.id);
+        }
+        return { id: args?.where?.id };
+      }
+    );
+
+    vi.mocked(createSnapToken).mockRejectedValueOnce(new Error('Midtrans timeout'));
+
+    const res1 = await POST(buyRequest());
+    expect(res1.status).toBe(502);
+
+    // Transaksi lama dibatalkan dan tautannya dilepas supaya tidak P2002.
+    expect(mocks.prisma.transaction.update).toHaveBeenCalledWith({
+      where: { id: 'tx_1' },
+      data: { status: 'CANCELLED', secondaryListingId: null },
+    });
+    expect(mocks.prisma.secondaryListing.updateMany).toHaveBeenCalledWith({
+      where: { id: 'lst_1', status: 'PENDING_PAYMENT' },
+      data: { status: 'ACTIVE' },
+    });
+
+    // Retry dengan listing yang sama harus bisa membuat transaksi baru.
+    const res2 = await POST(buyRequest());
+    expect(res2.status).toBe(200);
+    const body2 = await res2.json();
+    expect(body2.orderId).toBeTruthy();
+  });
 });

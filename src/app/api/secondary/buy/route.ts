@@ -173,10 +173,18 @@ export async function POST(request: NextRequest) {
     } catch (snapError) {
       console.error('Gagal membuat sesi pembayaran Midtrans:', snapError);
 
-      // Revert listing to ACTIVE so the buyer can try again
-      await prisma.secondaryListing.updateMany({
-        where: { id: listing.id, status: 'PENDING_PAYMENT' },
-        data: { status: 'ACTIVE' },
+      // Ruling 4: batalkan transaksi PENDING dan lepas tautan `secondaryListingId`
+      // (kolom @unique) supaya percobaan ulang tidak menabrak P2002, lalu
+      // kembalikan listing ke ACTIVE.
+      await prisma.$transaction(async (tx) => {
+        await tx.transaction.update({
+          where: { id: result.transaction.id },
+          data: { status: 'CANCELLED', secondaryListingId: null },
+        });
+        await tx.secondaryListing.updateMany({
+          where: { id: listing.id, status: 'PENDING_PAYMENT' },
+          data: { status: 'ACTIVE' },
+        });
       });
 
       return NextResponse.json(
