@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { verifySignature } from '@/lib/midtrans';
 import { releaseReservation } from '@/lib/reservations';
+import {
+  completeSecondaryPurchase,
+  releaseSecondaryPending,
+} from '@/lib/secondary-settlement';
 
 export async function POST(request: NextRequest) {
   try {
@@ -66,6 +70,27 @@ export async function POST(request: NextRequest) {
       (fraud_status === 'accept' || !fraud_status);
 
     if (shouldUpdateToPaid && transaction.status === 'PENDING') {
+      // Pembelian secondary tidak memakai jalur primer (yang hanya menandai
+      // PAID + membuat baris saldo 0). Settlement harus memindahkan aset ke
+      // pembeli dan mengkredit penjual dalam transaksi yang sama.
+      if (
+        transaction.type === 'SECONDARY_BUY' &&
+        transaction.secondaryListingId
+      ) {
+        await prisma.$transaction((tx) =>
+          completeSecondaryPurchase(
+            tx,
+            transaction.id,
+            body.payment_type ?? null
+          )
+        );
+
+        return NextResponse.json({
+          status: 'success',
+          message: 'Payment processed',
+        });
+      }
+
       await prisma.$transaction(async (tx) => {
         await tx.transaction.update({
           where: { id: transaction.id },
@@ -95,9 +120,15 @@ export async function POST(request: NextRequest) {
     }
 
     if (transaction_status === 'deny' || transaction_status === 'cancel') {
-      // Lepas slot lot dan baris kepemilikan, bukan hanya statusnya.
+      // Pada pembelian secondary tidak ada aset yang pernah berpindah, jadi
+      // cukup kembalikan listing ke ACTIVE. Untuk transaksi primer, lepas slot
+      // lot dan baris kepemilikannya.
+      const isSecondary = transaction.type === 'SECONDARY_BUY';
+
       await prisma.$transaction((tx) =>
-        releaseReservation(tx, transaction.id, 'CANCELLED')
+        isSecondary
+          ? releaseSecondaryPending(tx, transaction.id, 'CANCELLED')
+          : releaseReservation(tx, transaction.id, 'CANCELLED')
       );
 
       return NextResponse.json({
@@ -107,8 +138,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (transaction_status === 'expire') {
+      const isSecondary = transaction.type === 'SECONDARY_BUY';
+
       await prisma.$transaction((tx) =>
-        releaseReservation(tx, transaction.id, 'EXPIRED')
+        isSecondary
+          ? releaseSecondaryPending(tx, transaction.id, 'EXPIRED')
+          : releaseReservation(tx, transaction.id, 'EXPIRED')
       );
 
       return NextResponse.json({
