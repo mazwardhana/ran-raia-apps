@@ -67,6 +67,17 @@ const SETTING_META: Record<string, SettingMeta> = {
 const SPLIT_KEYS = ['raia_share_percent', 'investor_share_percent'] as const;
 const PERCENT_KEYS = ['raia_share_percent', 'investor_share_percent', 'secondary_admin_fee_percent'];
 
+/**
+ * Kunci yang mengubah pembagian uang dan biaya platform (RULING 24) — hanya
+ * ADMIN yang boleh menulisnya. Kunci lain tetap bisa diubah OPERATOR.
+ */
+const ADMIN_ONLY_KEYS = [
+  'raia_share_percent',
+  'investor_share_percent',
+  'secondary_admin_fee_percent',
+  'secondary_admin_fee_flat',
+];
+
 const updateSchema = z.object({
   key: z.string().min(1, 'Key pengaturan wajib diisi'),
   value: z.string().min(1, 'Nilai pengaturan wajib diisi'),
@@ -121,12 +132,6 @@ export async function GET() {
 
 async function handleUpdate(request: NextRequest): Promise<NextResponse> {
   try {
-    await requireRole(['OPERATOR', 'ADMIN']);
-  } catch (error) {
-    return deny(error);
-  }
-
-  try {
     const body = await request.json().catch(() => null);
     const validation = updateSchema.safeParse(body);
 
@@ -138,6 +143,17 @@ async function handleUpdate(request: NextRequest): Promise<NextResponse> {
     }
 
     const { key, value } = validation.data;
+
+    // Kunci sensitif (pembagian profit & biaya admin secondary) hanya ADMIN.
+    // Kunci tak dikenal tetap jatuh ke guard default lalu ditolak 400 di bawah.
+    try {
+      await requireRole(
+        ADMIN_ONLY_KEYS.includes(key) ? ['ADMIN'] : ['OPERATOR', 'ADMIN']
+      );
+    } catch (error) {
+      return deny(error);
+    }
+
     const meta = SETTING_META[key];
 
     if (!meta) {

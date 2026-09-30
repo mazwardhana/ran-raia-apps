@@ -155,7 +155,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireRole(['OPERATOR', 'ADMIN']);
+    await requireRole(['ADMIN']);
   } catch (error) {
     return deny(error);
   }
