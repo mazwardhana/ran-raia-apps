@@ -15,6 +15,10 @@ const withSerwist = withSerwistInit({
   swDest: 'public/sw.js',
   disable: process.env.NODE_ENV === 'development',
   register: false,
+  // `reloadOnOnline` default `true` menyuntik listener `online` ke bundle client
+  // yang memanggil `location.reload()`. Itu membuang isian checkout/KYC yang
+  // sedang berjalan begitu jaringan pulih; reload hanya lewat tombol user.
+  reloadOnOnline: false,
   // `/offline` bukan file di public/, jadi harus didaftarkan manual agar ikut
   // diprecache. Tanpa ini `fallbacks` di sw.ts tidak punya respons untuk dipakai.
   additionalPrecacheEntries: [{ url: '/offline', revision: randomUUID() }],
