@@ -34,6 +34,13 @@ export function BaseModal({ opened, onClose, title, children, size = 'md' }: Bas
             borderTopLeftRadius: 16,
             borderTopRightRadius: 16,
           },
+          body: {
+            // Drawer di-portal ke <body>, jadi padding bawah body halaman tidak
+            // menjangkau sheet yang position: fixed. Padding body Drawer bawaan
+            // 16px dipertahankan, lalu ditambah inset aman supaya kontrol
+            // terakhir tidak tertutup home indicator iPhone.
+            paddingBottom: 'calc(16px + env(safe-area-inset-bottom))',
+          },
         }}
       >
         {children}

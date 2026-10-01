@@ -27,11 +27,14 @@ import type { Article } from '@prisma/client';
 import { HOW_IT_WORKS, VALUE_PROPS, WHY_RAIA, type PackageCardData } from './data';
 import { FaqAccordion } from './FaqAccordion';
 
-const TEAL = 'var(--mantine-color-teal-7)';
+// Warna identitas institusional: dipakai gradien hero dan teks tombol CTA.
+const TEAL = '#0F766E';
+// Nuansa teal-7 untuk ikon dekoratif di atas kartu terang; beda peran dari TEAL.
+const TEAL_ICON = 'var(--mantine-color-teal-7)';
 
 // Gradien identitas: teal institusional, bukan ungu default template.
-// Putih di atas #0F766E = 5.47:1 dan di atas #14513B = 9.25:1, lulus AA.
-const HERO_BACKGROUND = 'linear-gradient(135deg, #0F766E 0%, #14513B 100%)';
+// Putih di atas TEAL = 5.47:1 dan di atas #14513B = 9.25:1, lulus AA.
+const HERO_BACKGROUND = `linear-gradient(135deg, ${TEAL} 0%, #14513B 100%)`;
 
 // Langkah transparansi menggantikan testimoni. Kami tidak menampilkan kutipan
 // pengguna yang belum ada; yang ditampilkan hanya hal yang bisa diperiksa.
@@ -92,7 +95,7 @@ export function Hero() {
                   size="xl"
                   color="white"
                   radius="md"
-                  style={{ color: '#0F766E', fontWeight: 700 }}
+                  style={{ color: TEAL, fontWeight: 700 }}
                 >
                   Daftar Sekarang
                 </Button>
@@ -129,7 +132,7 @@ export function ValuePropositions() {
             <GridCol key={i} span={{ base: 12, sm: 6, md: 3 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
-                  <IconCheck size={32} color={TEAL} />
+                  <IconCheck size={32} color={TEAL_ICON} />
                   <Text fw={600} size="lg">{prop.title}</Text>
                   <Text size="sm" c="dimmed">{prop.description}</Text>
                 </Stack>
@@ -157,7 +160,7 @@ export function HowItWorksSection() {
                       width: 40,
                       height: 40,
                       borderRadius: '50%',
-                      backgroundColor: TEAL,
+                      backgroundColor: TEAL_ICON,
                       color: 'white',
                       display: 'flex',
                       alignItems: 'center',
@@ -196,7 +199,7 @@ export function WhyRaiaSection() {
               <GridCol key={i} span={{ base: 12, md: 4 }}>
                 <Card shadow="sm" padding="lg" radius="md" h="100%">
                   <Stack gap="md">
-                    <Icon size={32} color={TEAL} />
+                    <Icon size={32} color={TEAL_ICON} />
                     <Text fw={600} size="lg">{item.title}</Text>
                     <Text size="sm" c="dimmed">{item.description}</Text>
                   </Stack>
@@ -228,7 +231,7 @@ export function TransparencySection() {
               <GridCol key={step.title} span={{ base: 12, sm: 6 }}>
                 <Card shadow="sm" padding="lg" radius="md" h="100%">
                   <Group align="flex-start" wrap="nowrap">
-                    <step.icon size={32} color={TEAL} aria-hidden="true" />
+                    <step.icon size={32} color={TEAL_ICON} aria-hidden="true" />
                     <Stack gap="xs">
                       <Text fw={600} size="lg">{step.title}</Text>
                       <Text size="sm" c="dimmed">{step.description}</Text>
@@ -276,7 +279,7 @@ export function FinalCta() {
             size="xl"
             color="white"
             radius="md"
-            style={{ color: '#0F766E', fontWeight: 700 }}
+            style={{ color: TEAL, fontWeight: 700 }}
           >
             Daftar Sekarang
           </Button>
