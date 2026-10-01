@@ -7,7 +7,6 @@ import {
   Group,
   NumberInput,
   Paper,
-  ScrollArea,
   Select,
   SimpleGrid,
   Stack,
@@ -320,7 +319,7 @@ export function TernakView({ initial }: { initial: TernakInitial }) {
         setLivestockOptions(
           (json.items ?? []).map(
             (item: { id: string; tagNumber: string; name: string | null }) => ({
-              label: `${item.tagNumber}${item.name ? ` — ${item.name}` : ''}`,
+              label: `${item.tagNumber}${item.name ? ` - ${item.name}` : ''}`,
               value: item.id,
             })
           )
@@ -678,14 +677,14 @@ export function TernakView({ initial }: { initial: TernakInitial }) {
               <Group justify="space-between">
                 <Text size="sm">File: {fileName}</Text>
                 <Text size="sm">
-                  {previewRows.length} baris terbaca — {preview.valid.length} valid,{' '}
+                  {previewRows.length} baris terbaca: {preview.valid.length} valid,{' '}
                   {preview.errors.length} error
                 </Text>
               </Group>
 
               {preview.errors.length > 0 && (
                 <Paper withBorder>
-                  <ScrollArea>
+                  <Table.ScrollContainer minWidth={360}>
                     <Table>
                       <Table.Thead>
                         <Table.Tr>
@@ -704,7 +703,7 @@ export function TernakView({ initial }: { initial: TernakInitial }) {
                         ))}
                       </Table.Tbody>
                     </Table>
-                  </ScrollArea>
+                  </Table.ScrollContainer>
                 </Paper>
               )}
               {preview.errors.length > 50 && (

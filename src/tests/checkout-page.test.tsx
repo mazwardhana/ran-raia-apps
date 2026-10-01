@@ -106,6 +106,28 @@ function makeFetch() {
   });
 }
 
+// Stub matchMedia yang bisa diubah per-test. `useMediaQuery` Mantine membaca
+// `matches` di effect, jadi tes bisa mengunci jalur mobile (max-width: 767px).
+let mediaMatches = false;
+
+function stubMatchMedia() {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      matches: mediaMatches,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    }),
+  });
+}
+
 beforeAll(() => {
   class ResizeObserverMock {
     observe() {}
@@ -118,26 +140,14 @@ beforeAll(() => {
     value: ResizeObserverMock,
   });
 
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: (query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener() {},
-      removeListener: {},
-      addEventListener() {},
-      removeEventListener() {},
-      dispatchEvent() {
-        return false;
-      },
-    }),
-  });
+  stubMatchMedia();
 });
 
 let fetchMock: ReturnType<typeof vi.fn>;
 
 beforeEach(() => {
+  mediaMatches = false;
+  stubMatchMedia();
   fetchMock = makeFetch();
   vi.stubGlobal('fetch', fetchMock);
   window.history.replaceState({}, '', '/app/checkout/pkg-1');
@@ -145,6 +155,8 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  mediaMatches = false;
+  stubMatchMedia();
 });
 
 async function renderCheckout(id: string) {
@@ -219,5 +231,19 @@ describe('Checkout Page', () => {
         ownershipType: 'FULL',
       });
     });
+  });
+
+  it('renders the sticky CTA and investment disclosure at mobile width', async () => {
+    mediaMatches = true;
+    await renderCheckout('pkg-1');
+
+    const payButton = screen.getByRole('button', { name: /bayar/i });
+    const stickyBar = payButton.closest('div');
+    expect(stickyBar).not.toBeNull();
+    expect(stickyBar).toHaveStyle({ position: 'fixed' });
+
+    expect(
+      screen.getByText('Nilai investasi dikembalikan di akhir periode sesuai realisasi ternak.')
+    ).toBeInTheDocument();
   });
 });

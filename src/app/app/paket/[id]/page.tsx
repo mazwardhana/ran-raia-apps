@@ -166,7 +166,7 @@ export default async function PackageDetailPage({
             <Text size="sm" fw={600}>
               Komposisi biaya
             </Text>
-            <Box style={{ overflowX: 'auto' }}>
+            <Table.ScrollContainer minWidth={480}>
               <Table>
                 <TableThead>
                   <TableTr>
@@ -179,7 +179,7 @@ export default async function PackageDetailPage({
                   {pkg.costs.map((cost) => (
                     <TableTr key={cost.costType}>
                       <TableTd>{COST_LABELS[cost.costType] || cost.costType}</TableTd>
-                      <TableTd c="dimmed">{cost.description || '—'}</TableTd>
+                      <TableTd c="dimmed">{cost.description || '-'}</TableTd>
                       <TableTd ta="right">{formatRupiah(cost.amount)}</TableTd>
                     </TableTr>
                   ))}
@@ -192,7 +192,7 @@ export default async function PackageDetailPage({
                   </TableTr>
                 </TableTbody>
               </Table>
-            </Box>
+            </Table.ScrollContainer>
           </Stack>
         </Card>
 
@@ -207,7 +207,7 @@ export default async function PackageDetailPage({
                   ROI
                 </Text>
                 <Text size="sm" fw={500}>
-                  {pkg.estimatedRoi != null ? `ROI ${pkg.estimatedRoi}%` : '—'}
+                  {pkg.estimatedRoi != null ? `ROI ${pkg.estimatedRoi}%` : '-'}
                 </Text>
               </Box>
               <Box>
@@ -217,7 +217,7 @@ export default async function PackageDetailPage({
                 <Text size="sm" fw={500}>
                   {pkg.estimatedOffspring != null && pkg.estimatedOffspringPrice != null
                     ? `${pkg.estimatedOffspring} ekor × ${formatRupiah(pkg.estimatedOffspringPrice)}`
-                    : '—'}
+                    : '-'}
                 </Text>
               </Box>
               <Box>
@@ -227,7 +227,7 @@ export default async function PackageDetailPage({
                 <Text size="sm" fw={500}>
                   {pkg.estimatedMilkMonthly != null && pkg.estimatedMilkPrice != null
                     ? `${pkg.estimatedMilkMonthly} liter × ${formatRupiah(pkg.estimatedMilkPrice)}`
-                    : '—'}
+                    : '-'}
                 </Text>
               </Box>
               <Box>

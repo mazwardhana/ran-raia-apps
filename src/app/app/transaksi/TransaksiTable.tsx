@@ -1,6 +1,7 @@
 'use client';
 
-import { Box, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Card, Group, Select, Stack, Table, Text, TextInput } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconSearch } from '@tabler/icons-react';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
@@ -25,10 +26,52 @@ export interface TransaksiTableProps {
 const TYPE_OPTIONS = ['BUY', 'SELL', 'PAYOUT', 'TAAWUN_CLAIM', 'TAKEOVER'];
 const STATUS_OPTIONS = ['PENDING', 'PAID', 'EXPIRED', 'CANCELLED', 'REFUNDED'];
 
+// Di bawah 768px tabel 5 kolom tidak terbaca: tiap transaksi dirender sebagai
+// kartu bertumpuk agar nominal dan status tetap terbaca tanpa geser samping.
+const MOBILE_QUERY = '(max-width: 767px)';
+
+function TransaksiCard({ row }: { row: TransaksiRow }) {
+  return (
+    <Card withBorder padding="md" radius="md" data-testid="transaksi-card">
+      <Stack gap="xs">
+        <Group justify="space-between" wrap="nowrap" gap="sm">
+          <Text fw={600} size="sm" style={{ wordBreak: 'break-all' }}>
+            {row.orderId}
+          </Text>
+          <StatusBadge status={row.status} />
+        </Group>
+        <Group justify="space-between" gap="sm">
+          <Text size="sm" c="dimmed">
+            Tipe
+          </Text>
+          <Text size="sm" fw={500}>
+            {row.type}
+          </Text>
+        </Group>
+        <Group justify="space-between" gap="sm">
+          <Text size="sm" c="dimmed">
+            Jumlah
+          </Text>
+          <Text size="sm" fw={700}>
+            {formatRupiah(row.amount)}
+          </Text>
+        </Group>
+        <Group justify="space-between" gap="sm">
+          <Text size="sm" c="dimmed">
+            Tanggal
+          </Text>
+          <Text size="sm">{dayjs(row.createdAt).format('DD MMM YYYY HH:mm')}</Text>
+        </Group>
+      </Stack>
+    </Card>
+  );
+}
+
 export function TransaksiTable({ rows }: TransaksiTableProps) {
   const [type, setType] = useState<string | null>(null);
   const [status, setStatus] = useState<string | null>(null);
   const [query, setQuery] = useState('');
+  const isMobile = useMediaQuery(MOBILE_QUERY);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -78,8 +121,14 @@ export function TransaksiTable({ rows }: TransaksiTableProps) {
         <Text size="sm" c="dimmed">
           Tidak ada transaksi yang cocok dengan filter.
         </Text>
+      ) : isMobile ? (
+        <Stack gap="sm">
+          {filtered.map((row) => (
+            <TransaksiCard key={row.id} row={row} />
+          ))}
+        </Stack>
       ) : (
-        <Box style={{ overflowX: 'auto' }}>
+        <Table.ScrollContainer minWidth={640}>
           <Table>
             <Table.Thead>
               <Table.Tr>
@@ -106,7 +155,7 @@ export function TransaksiTable({ rows }: TransaksiTableProps) {
               ))}
             </Table.Tbody>
           </Table>
-        </Box>
+        </Table.ScrollContainer>
       )}
     </Stack>
   );
