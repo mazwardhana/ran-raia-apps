@@ -42,5 +42,9 @@ prisma/migrations/
 # docker
 docker-compose.override.yml
 
+# serwist (dihasilkan saat build)
+public/sw*
+public/swe-worker*
+
 # kyc
 data/kyc/.worktrees

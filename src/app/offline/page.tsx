@@ -3,7 +3,7 @@ import Link from 'next/link';
 
 /**
  * Fallback halaman saat pengguna membuka aplikasi tanpa koneksi internet
- * (dipasang sebagai `document` fallback oleh next-pwa).
+ * (dipasang sebagai `document` fallback oleh Serwist).
  */
 export default function OfflinePage() {
   return (
