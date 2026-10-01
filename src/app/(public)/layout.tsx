@@ -3,6 +3,14 @@ import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PublicNav } from '@/components/landing/PublicNav';
 
+// Anchor di footer dan logo header dijadikan blok setinggi 44px supaya
+// target sentuh tetap memenuhi minimum di layar kecil.
+const touchAnchor = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 44,
+} as const;
+
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <Stack gap={0} style={{ minHeight: '100vh' }}>
@@ -13,7 +21,15 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
       >
         <Container size="lg">
           <Group justify="space-between" align="center">
-            <Anchor component={Link} href="/" c="dark" fw={700} size="xl" underline="never">
+            <Anchor
+              component={Link}
+              href="/"
+              c="dark"
+              fw={700}
+              size="xl"
+              underline="never"
+              style={touchAnchor}
+            >
               Raia
             </Anchor>
             <PublicNav />
@@ -42,18 +58,18 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
                 <Text size="sm" c="dimmed">Platform investasi ternak digital</Text>
               </Stack>
               <Group gap="xl" align="flex-start">
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">Platform</Text>
-                  <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover">Beranda</Anchor>
-                  <Anchor component={Link} href="/paket" size="sm" c="dimmed" underline="hover">Paket</Anchor>
-                  <Anchor component={Link} href="/artikel" size="sm" c="dimmed" underline="hover">Artikel</Anchor>
-                  <Anchor component={Link} href="/syarat-ketentuan" size="sm" c="dimmed" underline="hover">Syarat & Ketentuan</Anchor>
-                  <Anchor component={Link} href="/kebijakan-privasi" size="sm" c="dimmed" underline="hover">Kebijakan Privasi</Anchor>
+                <Stack gap={0}>
+                  <Text fw={600} size="sm" mb="xs">Platform</Text>
+                  <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Beranda</Anchor>
+                  <Anchor component={Link} href="/paket" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Paket</Anchor>
+                  <Anchor component={Link} href="/artikel" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Artikel</Anchor>
+                  <Anchor component={Link} href="/syarat-ketentuan" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Syarat & Ketentuan</Anchor>
+                  <Anchor component={Link} href="/kebijakan-privasi" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Kebijakan Privasi</Anchor>
                 </Stack>
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">Akun</Text>
-                  <Anchor component={Link} href="/login" size="sm" c="dimmed" underline="hover">Masuk</Anchor>
-                  <Anchor component={Link} href="/register" size="sm" c="dimmed" underline="hover">Daftar</Anchor>
+                <Stack gap={0}>
+                  <Text fw={600} size="sm" mb="xs">Akun</Text>
+                  <Anchor component={Link} href="/login" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Masuk</Anchor>
+                  <Anchor component={Link} href="/register" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Daftar</Anchor>
                 </Stack>
               </Group>
             </Group>
