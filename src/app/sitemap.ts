@@ -17,19 +17,12 @@ const staticRoutes: MetadataRoute.Sitemap = [
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   let articleRoutes: MetadataRoute.Sitemap = [];
-  let packageRoutes: MetadataRoute.Sitemap = [];
 
   try {
-    const [articles, packages] = await Promise.all([
-      prisma.article.findMany({
-        where: { publishedAt: { not: null } },
-        select: { slug: true, updatedAt: true },
-      }),
-      prisma.package.findMany({
-        where: { status: 'OPEN' },
-        select: { id: true, updatedAt: true },
-      }),
-    ]);
+    const articles = await prisma.article.findMany({
+      where: { publishedAt: { not: null } },
+      select: { slug: true, updatedAt: true },
+    });
 
     articleRoutes = articles.map((article) => ({
       url: `${BASE_URL}/artikel/${article.slug}`,
@@ -37,16 +30,10 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'monthly',
       priority: 0.7,
     }));
-
-    packageRoutes = packages.map((pkg) => ({
-      url: `${BASE_URL}/paket/${pkg.id}`,
-      lastModified: pkg.updatedAt,
-      changeFrequency: 'weekly',
-      priority: 0.8,
-    }));
-  } catch {
+  } catch (error) {
     // Database tidak tersedia: sitemap tetap menyajikan rute statis.
+    console.error('Gagal mengambil data artikel untuk sitemap:', error);
   }
 
-  return [...staticRoutes, ...articleRoutes, ...packageRoutes];
+  return [...staticRoutes, ...articleRoutes];
 }
