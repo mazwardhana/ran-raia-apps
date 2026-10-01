@@ -3,7 +3,7 @@ import '@testing-library/jest-dom/vitest';
 import { MantineProvider } from '@mantine/core';
 import { render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import '@/lib/prisma';
 import { theme } from '@/theme/theme';
@@ -40,6 +40,28 @@ vi.mock('@/lib/auth', () => {
   return auth;
 });
 
+// Stub matchMedia yang bisa diubah per-test. `useMediaQuery` Mantine membaca
+// `matches` di effect, jadi tes bisa mengunci jalur mobile (max-width: 767px).
+let mediaMatches = false;
+
+function stubMatchMedia() {
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      matches: mediaMatches,
+      media: query,
+      onchange: null,
+      addListener() {},
+      removeListener() {},
+      addEventListener() {},
+      removeEventListener() {},
+      dispatchEvent() {
+        return false;
+      },
+    }),
+  });
+}
+
 beforeAll(() => {
   class ResizeObserverMock {
     observe() {}
@@ -52,25 +74,18 @@ beforeAll(() => {
     value: ResizeObserverMock,
   });
 
-  Object.defineProperty(window, 'matchMedia', {
-    configurable: true,
-    value: (query: string) => ({
-      matches: false,
-      media: query,
-      onchange: null,
-      addListener() {},
-      removeListener: {},
-      addEventListener() {},
-      removeEventListener() {},
-      dispatchEvent() {
-        return false;
-      },
-    }),
-  });
+  stubMatchMedia();
 });
 
 beforeEach(() => {
+  mediaMatches = false;
+  stubMatchMedia();
   state.prisma.transaction.findMany.mockReset().mockResolvedValue([]);
+});
+
+afterEach(() => {
+  mediaMatches = false;
+  stubMatchMedia();
 });
 
 function renderWithTheme(ui: React.ReactElement) {
@@ -157,5 +172,25 @@ describe('Transaksi', () => {
     await waitFor(() => {
       expect(screen.getByText('Belum ada transaksi.')).toBeInTheDocument();
     });
+  });
+
+  it('renders stacked cards and no table at mobile width', async () => {
+    mediaMatches = true;
+    state.prisma.transaction.findMany.mockResolvedValue(ROWS);
+
+    const TransaksiPage = (await import('@/app/app/transaksi/page')).default;
+    const ui = await TransaksiPage();
+    renderWithTheme(ui);
+
+    await waitFor(() => {
+      expect(screen.getAllByTestId('transaksi-card')).toHaveLength(ROWS.length);
+    });
+
+    expect(screen.queryByRole('table')).not.toBeInTheDocument();
+    const cards = screen.getAllByTestId('transaksi-card');
+    expect(within(cards[0]).getByText('ORD-2026-001')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('ORD-2026-002')).toBeInTheDocument();
+    expect(within(cards[0]).getByText('BUY')).toBeInTheDocument();
+    expect(within(cards[1]).getByText('SELL')).toBeInTheDocument();
   });
 });

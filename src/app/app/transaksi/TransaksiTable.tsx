@@ -32,7 +32,7 @@ const MOBILE_QUERY = '(max-width: 767px)';
 
 function TransaksiCard({ row }: { row: TransaksiRow }) {
   return (
-    <Card withBorder padding="md" radius="md">
+    <Card withBorder padding="md" radius="md" data-testid="transaksi-card">
       <Stack gap="xs">
         <Group justify="space-between" wrap="nowrap" gap="sm">
           <Text fw={600} size="sm" style={{ wordBreak: 'break-all' }}>

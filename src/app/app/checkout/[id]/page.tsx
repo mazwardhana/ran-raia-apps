@@ -476,6 +476,12 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       </SimpleGrid>
 
       {isMobile && (
+        <Text size="xs" c="dimmed">
+          Nilai investasi dikembalikan di akhir periode sesuai realisasi ternak.
+        </Text>
+      )}
+
+      {isMobile && (
         <Button
           variant="light"
           color="gray"
