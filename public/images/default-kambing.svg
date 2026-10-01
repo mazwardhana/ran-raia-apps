@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="kambingTitle kambingDesc">
+  <title id="kambingTitle">Ilustrasi kambing dan domba</title>
+  <desc id="kambingDesc">Siluet sederhana kambing atau domba menghadap ke kiri. Gambar contoh, bukan foto asli.</desc>
+
+  <rect width="600" height="400" fill="#F1F3F5" />
+  <circle cx="310" cy="196" r="132" fill="#DEE2E6" />
+  <ellipse cx="310" cy="342" rx="196" ry="20" fill="#DEE2E6" />
+
+  <g fill="#14513B">
+    <path d="M406 172 q 30 -14 26 -44" fill="none" stroke="#14513B" stroke-width="11" stroke-linecap="round" />
+    <circle cx="434" cy="124" r="12" />
+
+    <rect x="248" y="238" width="20" height="98" rx="10" />
+    <rect x="286" y="238" width="20" height="98" rx="10" />
+    <rect x="344" y="238" width="20" height="98" rx="10" />
+    <rect x="382" y="238" width="20" height="98" rx="10" />
+
+    <ellipse cx="320" cy="204" rx="102" ry="60" />
+
+    <path d="M214 168 L262 152 L266 214 L206 208 Z" />
+    <ellipse cx="178" cy="152" rx="36" ry="32" />
+    <ellipse cx="146" cy="166" rx="22" ry="16" />
+    <ellipse cx="196" cy="126" rx="16" ry="9" transform="rotate(-18 196 126)" />
+    <path d="M158 180 q 2 22 -8 30 q 20 -4 24 -26 z" />
+  </g>
+
+  <path d="M186 118 C 190 92, 204 78, 224 72" fill="none" stroke="#14513B" stroke-width="10" stroke-linecap="round" />
+  <path d="M170 120 C 168 96, 176 80, 194 68" fill="none" stroke="#0F766E" stroke-width="8" stroke-linecap="round" />
+
+  <g fill="#0F766E">
+    <rect x="248" y="322" width="20" height="16" rx="7" />
+    <rect x="286" y="322" width="20" height="16" rx="7" />
+    <rect x="344" y="322" width="20" height="16" rx="7" />
+    <rect x="382" y="322" width="20" height="16" rx="7" />
+  </g>
+
+  <text x="300" y="380" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" fill="#14513B">Ilustrasi contoh</text>
+</svg>

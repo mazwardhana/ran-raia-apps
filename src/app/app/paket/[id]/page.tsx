@@ -4,7 +4,6 @@ import {
   Button,
   Card,
   Group,
-  Image,
   Progress,
   SimpleGrid,
   Stack,
@@ -21,6 +20,7 @@ import dayjs from 'dayjs';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 
+import { PackageImage } from '@/components/ui/PackageImage';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatRupiah } from '@/lib/calculations';
 import { prisma } from '@/lib/prisma';
@@ -98,30 +98,13 @@ export default async function PackageDetailPage({
   return (
     <Box p="md">
       <Stack gap="lg">
-        {pkg.coverImage ? (
-          <Image
-            src={pkg.coverImage}
-            alt={`Foto paket ${pkg.title}`}
-            height={220}
-            fit="cover"
-            radius="md"
-          />
-        ) : (
-          <Box
-            h={220}
-            style={{
-              borderRadius: 'var(--mantine-radius-md)',
-              backgroundColor: 'var(--mantine-color-gray-1)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-            }}
-          >
-            <Text c="dimmed">
-              {pkg.animalType === 'KAMBING' ? 'Kambing' : 'Sapi'}
-            </Text>
-          </Box>
-        )}
+        <PackageImage
+          src={pkg.coverImage}
+          animalType={pkg.animalType}
+          alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+          height={220}
+          radius="md"
+        />
 
         <Stack gap="xs">
           <Title order={1}>{pkg.title}</Title>

@@ -1,0 +1,42 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 400" role="img" aria-labelledby="sapiTitle sapiDesc">
+  <title id="sapiTitle">Ilustrasi sapi</title>
+  <desc id="sapiDesc">Siluet sederhana sapi menghadap ke kiri dengan bercak warna. Gambar contoh, bukan foto asli.</desc>
+
+  <rect width="600" height="400" fill="#F1F3F5" />
+  <circle cx="310" cy="192" r="136" fill="#DEE2E6" />
+  <ellipse cx="310" cy="344" rx="204" ry="20" fill="#DEE2E6" />
+
+  <g fill="#14513B">
+    <path d="M416 170 q 30 -6 30 -38" fill="none" stroke="#14513B" stroke-width="11" stroke-linecap="round" />
+    <path d="M446 134 q -8 18 2 26 q 10 -8 6 -26 z" />
+
+    <rect x="240" y="236" width="22" height="100" rx="11" />
+    <rect x="280" y="236" width="22" height="100" rx="11" />
+    <rect x="348" y="236" width="22" height="100" rx="11" />
+    <rect x="388" y="236" width="22" height="100" rx="11" />
+
+    <ellipse cx="322" cy="200" rx="106" ry="62" />
+  </g>
+
+  <ellipse cx="286" cy="182" rx="36" ry="26" fill="#0F766E" />
+  <ellipse cx="372" cy="214" rx="28" ry="20" fill="#0F766E" />
+
+  <g fill="#14513B">
+    <path d="M212 150 L268 140 L272 224 L204 214 Z" />
+    <ellipse cx="172" cy="156" rx="42" ry="36" />
+    <ellipse cx="128" cy="174" rx="26" ry="20" />
+    <ellipse cx="212" cy="138" rx="18" ry="10" transform="rotate(-20 212 138)" />
+  </g>
+
+  <path d="M152 126 C 138 118, 128 108, 126 96" fill="none" stroke="#14513B" stroke-width="9" stroke-linecap="round" />
+  <path d="M192 124 C 206 116, 216 106, 218 94" fill="none" stroke="#0F766E" stroke-width="8" stroke-linecap="round" />
+
+  <g fill="#0F766E">
+    <rect x="240" y="322" width="22" height="16" rx="7" />
+    <rect x="280" y="322" width="22" height="16" rx="7" />
+    <rect x="348" y="322" width="22" height="16" rx="7" />
+    <rect x="388" y="322" width="22" height="16" rx="7" />
+  </g>
+
+  <text x="300" y="380" text-anchor="middle" font-family="system-ui, sans-serif" font-size="20" fill="#14513B">Ilustrasi contoh</text>
+</svg>
