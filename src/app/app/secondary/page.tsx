@@ -209,7 +209,7 @@ export default function SecondaryPage() {
               <Title order={1} id="judul-listing">
                 Listing Aktif
               </Title>
-              <Text size="sm" c="gray.7">
+              <Text size="sm" c="dimmed">
                 {listings.length} listing
               </Text>
             </Group>
@@ -239,7 +239,7 @@ export default function SecondaryPage() {
                           <Text size="sm" fw={500}>
                             {row.package?.title || row.package?.code || '-'}
                           </Text>
-                          <Text size="xs" c="gray.7">
+                          <Text size="xs" c="dimmed">
                             {row.ownershipType === 'FULL'
                               ? 'Paket utuh'
                               : `Lot ${row.lotStart}-${row.lotEnd}`}
@@ -293,7 +293,7 @@ export default function SecondaryPage() {
               <Title order={2} id="judul-aset">
                 Aset Saya
               </Title>
-              <Text size="sm" c="gray.7">
+              <Text size="sm" c="dimmed">
                 {myAssets.length} aset
               </Text>
             </Group>
@@ -323,7 +323,7 @@ export default function SecondaryPage() {
                           <Text size="sm" fw={500}>
                             {row.packageTitle}
                           </Text>
-                          <Text size="xs" c="gray.7">
+                          <Text size="xs" c="dimmed">
                             {row.packageCode}
                           </Text>
                         </Table.Td>
@@ -344,7 +344,7 @@ export default function SecondaryPage() {
                           {row.listed ? (
                             <StatusBadge status="ACTIVE" label="Dijual" />
                           ) : (
-                            <Text size="sm" c="gray.7">
+                            <Text size="sm" c="dimmed">
                               Tidak dijual
                             </Text>
                           )}

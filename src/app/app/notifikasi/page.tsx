@@ -151,7 +151,7 @@ export default function NotifikasiPage() {
               style={{
                 minHeight: 44,
                 cursor: n.isRead ? 'default' : 'pointer',
-                borderLeft: n.isRead ? undefined : '4px solid var(--mantine-primary-color-filled)',
+                borderLeft: n.isRead ? undefined : '4px solid var(--mantine-color-teal-6)',
               }}
             >
               <Stack gap={4}>
@@ -160,7 +160,7 @@ export default function NotifikasiPage() {
                     {TYPE_LABELS[n.type] ?? n.type}
                   </Badge>
                   {!n.isRead && (
-                    <Badge size="sm" color="green" variant="filled">
+                    <Badge size="sm" color="teal" variant="filled">
                       Belum dibaca
                     </Badge>
                   )}

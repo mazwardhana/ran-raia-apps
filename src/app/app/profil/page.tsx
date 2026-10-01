@@ -28,10 +28,11 @@ export default function ProfilPage() {
 
 function ProfilContent() {
   const [editing, setEditing] = useState(false);
-  const [displayName, setDisplayName] = useState('—');
-  const [displayUsername, setDisplayUsername] = useState('—');
-  const [displayEmail, setDisplayEmail] = useState('—');
-  const [displayPhone, setDisplayPhone] = useState('—');
+  // Placeholder "-" dipakai sampai data profil selesai dimuat.
+  const [displayName, setDisplayName] = useState('-');
+  const [displayUsername, setDisplayUsername] = useState('-');
+  const [displayEmail, setDisplayEmail] = useState('-');
+  const [displayPhone, setDisplayPhone] = useState('-');
   const [formError, setFormError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -110,7 +111,7 @@ function ProfilContent() {
         setDisplayEmail(updated.email);
       }
       if (typeof updated.phone === 'string') {
-        setDisplayPhone(updated.phone || '—');
+        setDisplayPhone(updated.phone || '-');
       }
       setSuccessMessage('Profil berhasil diperbarui.');
       setEditing(false);
@@ -169,7 +170,7 @@ function ProfilContent() {
         {successMessage && (
           <Alert
             icon={<IconCheck size={18} />}
-            color="green"
+            color="teal"
             variant="light"
             mt="md"
             role="status"

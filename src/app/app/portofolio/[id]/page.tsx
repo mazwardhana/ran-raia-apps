@@ -180,7 +180,7 @@ export default async function OwnershipDetailPage({
                   h={240}
                   data={milkData}
                   dataKey="day"
-                  series={[{ name: 'liters', label: 'Liter', color: 'blue.6' }]}
+                  series={[{ name: 'liters', label: 'Liter', color: 'teal.6' }]}
                   curveType="linear"
                   withLegend={false}
                   gridAxis="xy"

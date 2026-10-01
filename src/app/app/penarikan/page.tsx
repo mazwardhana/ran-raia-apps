@@ -201,7 +201,7 @@ export default function PenarikanPage() {
             {successMessage && (
               <Alert
                 icon={<IconCheck size={18} />}
-                color="green"
+                color="teal"
                 variant="light"
                 role="status"
               >
