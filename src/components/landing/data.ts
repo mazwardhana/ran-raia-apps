@@ -3,12 +3,6 @@ export interface FaqItem {
   answer: string;
 }
 
-export interface Testimonial {
-  name: string;
-  role: string;
-  quote: string;
-}
-
 export interface ValueProp {
   title: string;
   description: string;
@@ -35,7 +29,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Apa itu jasa gaduh pada investasi ternak?',
     answer:
-      'Jasa gaduh adalah sistem penitipan ternak: Anda menyetorkan modal, ternak dirawat peternak, lalu hasilnya dibagi. Di Raia, praktik tradisional ini dicatat digital — rasio bagi hasil 60% Raia dan 40% investor tercantum di setiap paket sebelum Anda membayar.',
+      'Jasa gaduh adalah sistem penitipan ternak: Anda menyetorkan modal, ternak dirawat peternak, lalu hasilnya dibagi. Di Raia, praktik tradisional ini dicatat digital, dengan rasio bagi hasil 60% Raia dan 40% investor tercantum di setiap paket sebelum Anda membayar.',
   },
   {
     question: 'Bagaimana cara kerja lot gotong royong?',
@@ -61,28 +55,7 @@ export const FAQ_ITEMS: FaqItem[] = [
   {
     question: 'Bagaimana saya memantau kondisi ternak dari kota?',
     answer:
-      'Dashboard investor menampilkan status kesehatan ternak, laporan produksi susu, kelahiran, dan riwayat distribusi profit — semuanya bisa dibuka dari ponsel tanpa perlu datang ke site.',
-  },
-];
-
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    name: 'Andi P.',
-    role: 'Pekerja kantoran, Jakarta',
-    quote:
-      'Baru mulai 100 lot untuk coba-coba. Laporan di dashboard jelas, saya tahu kambing saya dirawat di site mana.',
-  },
-  {
-    name: 'Rina S.',
-    role: 'Ibu rumah tangga, Bandung',
-    quote:
-      'Yang saya suka komposisi biayanya terbuka sejak awal. Tidak ada biaya tersembunyi saat checkout.',
-  },
-  {
-    name: 'Budi H.',
-    role: 'Konsultan, Surabaya',
-    quote:
-      'Fitur secondary market membuat saya yakin ada jalan keluar, bukan uang yang mengendap bertahun-tahun.',
+      'Dashboard investor menampilkan status kesehatan ternak, laporan produksi susu, kelahiran, dan riwayat distribusi profit, semuanya bisa dibuka dari ponsel tanpa perlu datang ke site.',
   },
 ];
 
@@ -95,7 +68,7 @@ export const VALUE_PROPS: ValueProp[] = [
   {
     title: 'Biaya terbuka sebelum bayar',
     description:
-      'Komposisi biaya paket — ternak, ta\'awun, sewa kandang, pakan, tenaga kerja, obat — ditampilkan rinci sebelum checkout.',
+      'Komposisi biaya paket (ternak, ta\'awun, sewa kandang, pakan, tenaga kerja, obat) ditampilkan rinci sebelum checkout.',
   },
   {
     title: 'Dikelola operator profesional',

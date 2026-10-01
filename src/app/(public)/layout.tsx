@@ -1,35 +1,22 @@
 import { Box, Container, Group, Stack, Text, Anchor, Divider } from '@mantine/core';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PublicNav } from '@/components/landing/PublicNav';
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <Stack gap={0} style={{ minHeight: '100vh' }}>
-      <Box component="header" py="md" style={{ borderBottom: '1px solid #e0e0e0' }}>
+      <Box
+        component="header"
+        py="md"
+        style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}
+      >
         <Container size="lg">
           <Group justify="space-between" align="center">
             <Anchor component={Link} href="/" c="dark" fw={700} size="xl" underline="never">
               Raia
             </Anchor>
-            <nav aria-label="Navigasi utama">
-              <Group gap="lg">
-                <Anchor component={Link} href="/" c="dark" underline="hover">
-                  Beranda
-                </Anchor>
-                <Anchor component={Link} href="/artikel" c="dark" underline="hover">
-                  Artikel
-                </Anchor>
-                <Anchor component={Link} href="/paket" c="dark" underline="hover">
-                  Paket
-                </Anchor>
-                <Anchor component={Link} href="/login" c="dark" underline="hover">
-                  Masuk
-                </Anchor>
-                <Anchor component={Link} href="/register" c="blue" underline="hover" fw={600}>
-                  Daftar
-                </Anchor>
-              </Group>
-            </nav>
+            <PublicNav />
           </Group>
         </Container>
       </Box>
@@ -38,15 +25,23 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      <Box component="footer" py="xl" mt="xl" style={{ borderTop: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' }}>
+      <Box
+        component="footer"
+        py="xl"
+        mt="xl"
+        style={{
+          borderTop: '1px solid var(--mantine-color-gray-3)',
+          backgroundColor: 'var(--mantine-color-gray-0)',
+        }}
+      >
         <Container size="lg">
           <Stack gap="md">
-            <Group justify="space-between" align="flex-start">
+            <Group justify="space-between" align="flex-start" gap="xl">
               <Stack gap="xs">
                 <Text fw={700} size="lg">Raia</Text>
                 <Text size="sm" c="dimmed">Platform investasi ternak digital</Text>
               </Stack>
-              <Group gap="xl">
+              <Group gap="xl" align="flex-start">
                 <Stack gap="xs">
                   <Text fw={600} size="sm">Platform</Text>
                   <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover">Beranda</Anchor>
