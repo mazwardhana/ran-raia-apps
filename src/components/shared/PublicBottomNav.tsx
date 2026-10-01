@@ -39,6 +39,7 @@ export function PublicBottomNav() {
       <Box
         component="nav"
         aria-label="Navigasi bawah"
+        hiddenFrom="md"
         style={{
           position: 'fixed',
           bottom: 0,
