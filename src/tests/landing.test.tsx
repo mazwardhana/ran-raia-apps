@@ -2,9 +2,21 @@ import '@testing-library/jest-dom/vitest';
 
 import { MantineProvider } from '@mantine/core';
 import { render, screen, within } from '@testing-library/react';
-import { beforeAll, describe, expect, it, vi } from 'vitest';
+import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { theme } from '@/theme/theme';
+
+// Pathname dikendalikan per-test supaya bottom nav bisa diuji di rute aktif,
+// di rute biasa, dan di rute yang menyembunyikannya (/login, /register).
+const navState = vi.hoisted(() => ({ pathname: '/' }));
+
+vi.mock('next/navigation', () => ({
+  usePathname: () => navState.pathname,
+  useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn(), back: vi.fn() }),
+  notFound: () => {
+    throw new Error('NEXT_NOT_FOUND');
+  },
+}));
 
 vi.mock('@/lib/prisma', () => ({
   prisma: {
@@ -103,6 +115,51 @@ describe('Landing page', () => {
     // Tidak boleh ada label "Data demo" maupun testimoni karangan di publik.
     expect(screen.queryByText(/data demo/i)).not.toBeInTheDocument();
     expect(screen.getAllByText(/transparansi dan audit/i).length).toBeGreaterThan(0);
+  });
+});
+
+describe('Public bottom nav', () => {
+  beforeEach(() => {
+    navState.pathname = '/';
+  });
+
+  it('renders 4 items with valid hrefs and active state', async () => {
+    navState.pathname = '/paket';
+    const { PublicBottomNav } = await import('@/components/shared/PublicBottomNav');
+    renderWithTheme(<PublicBottomNav />);
+
+    const nav = screen.getByRole('navigation', { name: /navigasi bawah/i });
+    const links = within(nav).getAllByRole('link');
+    expect(links).toHaveLength(4);
+    expect(links.map((link) => link.getAttribute('href'))).toEqual([
+      '/',
+      '/paket',
+      '/artikel',
+      '/register',
+    ]);
+
+    expect(within(nav).getByRole('link', { name: /paket/i })).toHaveAttribute(
+      'aria-current',
+      'page',
+    );
+    expect(within(nav).getByRole('link', { name: /beranda/i })).not.toHaveAttribute('aria-current');
+  });
+
+  it('hides itself on /login and /register', async () => {
+    const { PublicBottomNav } = await import('@/components/shared/PublicBottomNav');
+
+    navState.pathname = '/login';
+    const loginView = renderWithTheme(<PublicBottomNav />);
+    expect(
+      screen.queryByRole('navigation', { name: /navigasi bawah/i }),
+    ).not.toBeInTheDocument();
+    loginView.unmount();
+
+    navState.pathname = '/register';
+    renderWithTheme(<PublicBottomNav />);
+    expect(
+      screen.queryByRole('navigation', { name: /navigasi bawah/i }),
+    ).not.toBeInTheDocument();
   });
 });
 
