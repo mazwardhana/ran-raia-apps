@@ -24,7 +24,7 @@ export function generateSeo(opts: {
   } = opts;
 
   const url = `${BASE_URL}${path}`;
-  const image = ogImage || `${BASE_URL}/opengraph-image.png`;
+  const image = ogImage || `${BASE_URL}/opengraph-image`;
 
   return {
     title,
