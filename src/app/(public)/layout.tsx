@@ -1,35 +1,38 @@
 import { Box, Container, Group, Stack, Text, Anchor, Divider } from '@mantine/core';
 import Link from 'next/link';
 import type { ReactNode } from 'react';
+import { PublicNav } from '@/components/landing/PublicNav';
+
+// Anchor di footer dan logo header dijadikan blok setinggi 44px supaya
+// target sentuh tetap memenuhi minimum di layar kecil.
+const touchAnchor = {
+  display: 'inline-flex',
+  alignItems: 'center',
+  minHeight: 44,
+} as const;
 
 export default function PublicLayout({ children }: { children: ReactNode }) {
   return (
     <Stack gap={0} style={{ minHeight: '100vh' }}>
-      <Box component="header" py="md" style={{ borderBottom: '1px solid #e0e0e0' }}>
+      <Box
+        component="header"
+        py="md"
+        style={{ borderBottom: '1px solid var(--mantine-color-gray-3)' }}
+      >
         <Container size="lg">
           <Group justify="space-between" align="center">
-            <Anchor component={Link} href="/" c="dark" fw={700} size="xl" underline="never">
+            <Anchor
+              component={Link}
+              href="/"
+              c="dark"
+              fw={700}
+              size="xl"
+              underline="never"
+              style={touchAnchor}
+            >
               Raia
             </Anchor>
-            <nav aria-label="Navigasi utama">
-              <Group gap="lg">
-                <Anchor component={Link} href="/" c="dark" underline="hover">
-                  Beranda
-                </Anchor>
-                <Anchor component={Link} href="/artikel" c="dark" underline="hover">
-                  Artikel
-                </Anchor>
-                <Anchor component={Link} href="/paket" c="dark" underline="hover">
-                  Paket
-                </Anchor>
-                <Anchor component={Link} href="/login" c="dark" underline="hover">
-                  Masuk
-                </Anchor>
-                <Anchor component={Link} href="/register" c="blue" underline="hover" fw={600}>
-                  Daftar
-                </Anchor>
-              </Group>
-            </nav>
+            <PublicNav />
           </Group>
         </Container>
       </Box>
@@ -38,27 +41,35 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      <Box component="footer" py="xl" mt="xl" style={{ borderTop: '1px solid #e0e0e0', backgroundColor: '#f8f9fa' }}>
+      <Box
+        component="footer"
+        py="xl"
+        mt="xl"
+        style={{
+          borderTop: '1px solid var(--mantine-color-gray-3)',
+          backgroundColor: 'var(--mantine-color-gray-0)',
+        }}
+      >
         <Container size="lg">
           <Stack gap="md">
-            <Group justify="space-between" align="flex-start">
+            <Group justify="space-between" align="flex-start" gap="xl">
               <Stack gap="xs">
                 <Text fw={700} size="lg">Raia</Text>
                 <Text size="sm" c="dimmed">Platform investasi ternak digital</Text>
               </Stack>
-              <Group gap="xl">
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">Platform</Text>
-                  <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover">Beranda</Anchor>
-                  <Anchor component={Link} href="/paket" size="sm" c="dimmed" underline="hover">Paket</Anchor>
-                  <Anchor component={Link} href="/artikel" size="sm" c="dimmed" underline="hover">Artikel</Anchor>
-                  <Anchor component={Link} href="/syarat-ketentuan" size="sm" c="dimmed" underline="hover">Syarat & Ketentuan</Anchor>
-                  <Anchor component={Link} href="/kebijakan-privasi" size="sm" c="dimmed" underline="hover">Kebijakan Privasi</Anchor>
+              <Group gap="xl" align="flex-start">
+                <Stack gap={0}>
+                  <Text fw={600} size="sm" mb="xs">Platform</Text>
+                  <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Beranda</Anchor>
+                  <Anchor component={Link} href="/paket" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Paket</Anchor>
+                  <Anchor component={Link} href="/artikel" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Artikel</Anchor>
+                  <Anchor component={Link} href="/syarat-ketentuan" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Syarat & Ketentuan</Anchor>
+                  <Anchor component={Link} href="/kebijakan-privasi" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Kebijakan Privasi</Anchor>
                 </Stack>
-                <Stack gap="xs">
-                  <Text fw={600} size="sm">Akun</Text>
-                  <Anchor component={Link} href="/login" size="sm" c="dimmed" underline="hover">Masuk</Anchor>
-                  <Anchor component={Link} href="/register" size="sm" c="dimmed" underline="hover">Daftar</Anchor>
+                <Stack gap={0}>
+                  <Text fw={600} size="sm" mb="xs">Akun</Text>
+                  <Anchor component={Link} href="/login" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Masuk</Anchor>
+                  <Anchor component={Link} href="/register" size="sm" c="dimmed" underline="hover" style={touchAnchor}>Daftar</Anchor>
                 </Stack>
               </Group>
             </Group>

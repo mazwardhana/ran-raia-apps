@@ -95,12 +95,14 @@ describe('Landing page', () => {
     expect(screen.getAllByText(/siapa.*(mengelola|kelola)/i).length).toBeGreaterThan(0);
   });
 
-  it('testimonials are labelled as demo data', async () => {
+  it('shows transparency section instead of fabricated testimonials', async () => {
     const { default: LandingPage } = await import('@/app/(public)/page');
     const jsx = await LandingPage();
     renderWithTheme(jsx);
 
-    expect(screen.getAllByText(/data demo/i).length).toBeGreaterThan(0);
+    // Tidak boleh ada label "Data demo" maupun testimoni karangan di publik.
+    expect(screen.queryByText(/data demo/i)).not.toBeInTheDocument();
+    expect(screen.getAllByText(/transparansi dan audit/i).length).toBeGreaterThan(0);
   });
 });
 

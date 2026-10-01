@@ -120,7 +120,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
           <Alert
             icon={<IconAlertCircle size={20} />}
             title="Verifikasi identitas Anda"
-            color="yellow"
+            color="teal"
             variant="light"
           >
             <Text size="sm" mb="xs">
@@ -131,7 +131,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
               href="/kyc"
               size="sm"
               variant="light"
-              color="yellow"
+              color="teal"
               style={{ minHeight: 44 }}
             >
               Verifikasi sekarang
