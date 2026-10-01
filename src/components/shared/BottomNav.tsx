@@ -33,6 +33,10 @@ export function BottomNav({ currentPath }: BottomNavProps) {
         right: 0,
         backgroundColor: 'var(--mantine-color-white)',
         borderTop: '1px solid var(--mantine-color-gray-3)',
+        // Terasa seperti sheet yang naik dari bawah, bukan bar menempel.
+        borderTopLeftRadius: 16,
+        borderTopRightRadius: 16,
+        paddingBottom: 'env(safe-area-inset-bottom)',
         zIndex: 100,
       }}
     >

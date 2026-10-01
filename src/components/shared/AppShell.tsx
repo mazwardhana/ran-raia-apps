@@ -21,8 +21,8 @@ export function AppShell({ children, notificationCount = 0 }: AppShellProps) {
       <Box
         component="main"
         style={{
-          paddingTop: 64,
-          paddingBottom: 92,
+          paddingTop: 'var(--header-h)',
+          paddingBottom: 'var(--bottomnav-h)',
           minHeight: '100vh',
           backgroundColor: 'var(--mantine-color-gray-0)',
         }}
