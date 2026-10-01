@@ -1,10 +1,13 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import { Plus_Jakarta_Sans } from 'next/font/google';
 import { ColorSchemeScript } from '@mantine/core';
+import { Notifications } from '@mantine/notifications';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/charts/styles.css';
 import './globals.css';
+
+import { ServiceWorkerRegistrar } from '@/components/shared/ServiceWorkerRegistrar';
 import { Providers } from './providers';
 
 // Plus Jakarta Sans dirancang untuk pasar Indonesia: x-height besar dan angka
@@ -22,12 +25,25 @@ export const metadata: Metadata = {
   // PWA: biar bisa di-install dari homescreen.
   manifest: '/manifest.json',
   applicationName: 'Raia',
-  themeColor: '#0F766E',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
     title: 'Raia',
   },
+  // iOS "Add to Home Screen" butuh apple-touch-icon; tanpa ini iOS memakai screenshot halaman.
+  icons: {
+    icon: '/icons/icon-192.png',
+    apple: '/icons/apple-icon.png',
+  },
+};
+
+// Next 14 mengabaikan `themeColor` bila ditaruh di `metadata`; wajib di `viewport`.
+// `viewportFit: 'cover'` prasyarat agar `env(safe-area-inset-*)` berfungsi.
+export const viewport: Viewport = {
+  themeColor: '#0F766E',
+  width: 'device-width',
+  initialScale: 1,
+  viewportFit: 'cover',
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
@@ -35,7 +51,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="id" className={jakarta.variable} suppressHydrationWarning>
       <head><ColorSchemeScript defaultColorScheme="light" /></head>
       <body>
-        <Providers>{children}</Providers>
+        <Providers>
+          <Notifications position="top-center" />
+          <ServiceWorkerRegistrar />
+          {children}
+        </Providers>
       </body>
     </html>
   );

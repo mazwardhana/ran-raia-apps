@@ -84,10 +84,29 @@ describe('PWA packaging', () => {
     expect(back).toHaveAttribute('href', '/');
   });
 
-  it('next.config.mjs wraps config with next-pwa', () => {
+  it('next.config.mjs wraps config with Serwist', () => {
     const source = readFileSync(path.join(root, 'next.config.mjs'), 'utf8');
-    expect(source).toContain('next-pwa');
-    expect(source).toMatch(/withPWA/);
+    expect(source).toContain('@serwist/next');
+    expect(source).toMatch(/withSerwist/);
     expect(source).toContain('reactStrictMode');
+    // Registrasi eksplisit: jangan biarkan bundler menyuntik ke entry yang salah.
+    expect(source).toContain('register: false');
+  });
+
+  it('service worker is written with Serwist and waits instead of taking over tabs', () => {
+    const source = readFileSync(path.join(root, 'src/app/sw.ts'), 'utf8');
+    expect(source).toContain('new Serwist(');
+    expect(source).toContain('skipWaiting: false');
+    expect(source).toContain('NetworkOnly');
+    expect(source).toMatch(/\/api\\\/\(auth\|payments\|kyc\)/);
+  });
+
+  it('registers the service worker explicitly in production only', () => {
+    const source = readFileSync(
+      path.join(root, 'src/components/shared/ServiceWorkerRegistrar.tsx'),
+      'utf8'
+    );
+    expect(source).toContain(".register('/sw.js')");
+    expect(source).toContain("process.env.NODE_ENV !== 'production'");
   });
 });

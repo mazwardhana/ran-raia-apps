@@ -1,60 +1,30 @@
-import withPWAInit from 'next-pwa';
+import { randomUUID } from 'node:crypto';
+import withSerwistInit from '@serwist/next';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
 };
 
-const withPWA = withPWAInit({
-  dest: 'public',
-  register: true,
-  skipWaiting: true,
+// Registrasi SW sengaja dimatikan (`register: false`): next-pwa dulu menyuntik
+// registrasi ke entry `main.js` (Pages Router) sehingga di App Router SW tidak
+// pernah terdaftar. Kita daftarkan eksplisit di ServiceWorkerRegistrar supaya
+// bug kelas itu tidak bisa terulang.
+const withSerwist = withSerwistInit({
+  swSrc: 'src/app/sw.ts',
+  swDest: 'public/sw.js',
   disable: process.env.NODE_ENV === 'development',
-  fallbacks: {
-    document: '/offline',
-  },
-  runtimeCaching: [
-    {
-      // Aset statis → cache dulu, hemat bandwidth.
-      urlPattern: /\.(?:js|css|woff2?|png|jpg|jpeg|svg|gif|webp|avif|ico)$/i,
-      handler: 'CacheFirst',
-      options: {
-        cacheName: 'static-assets',
-        expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 * 30 },
-      },
-    },
-    {
-      // API aplikasi → coba jaringan dulu, baru cache.
-      // Kecuali API sensitif (auth, pembayaran, KYC) yang ditangani NetworkOnly di bawah.
-      urlPattern: ({ url }) =>
-        url.pathname.startsWith('/api/') &&
-        !/^\/api\/(auth|payments|kyc)/.test(url.pathname),
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'api-cache',
-        networkTimeoutSeconds: 8,
-        expiration: { maxEntries: 100, maxAgeSeconds: 60 * 60 * 24 },
-      },
-    },
-    {
-      // API sensitif (autentikasi, pembayaran & identitas/KYC) tidak pernah masuk cache.
-      urlPattern: ({ url }) => /^\/api\/(auth|payments|kyc)/.test(url.pathname),
-      handler: 'NetworkOnly',
-      // `options` wajib ada: next-pwa menelusuri c.options.precacheFallback
-      // untuk setiap entri saat `fallbacks` dipakai, dan crash bila kosong.
-      options: {},
-    },
-    {
-      // Halaman navigasi → coba jaringan dulu, fallback ke cache bila offline.
-      urlPattern: ({ request }) => request.destination === 'document',
-      handler: 'NetworkFirst',
-      options: {
-        cacheName: 'pages',
-        networkTimeoutSeconds: 8,
-        expiration: { maxEntries: 60, maxAgeSeconds: 60 * 60 * 24 * 7 },
-      },
-    },
-  ],
+  register: false,
+  // `reloadOnOnline` default `true` menyuntik listener `online` ke bundle client
+  // yang memanggil `location.reload()`. Itu membuang isian checkout/KYC yang
+  // sedang berjalan begitu jaringan pulih; reload hanya lewat tombol user.
+  reloadOnOnline: false,
+  // `/offline` bukan file di public/, jadi harus didaftarkan manual agar ikut
+  // diprecache. Tanpa ini `fallbacks` di sw.ts tidak punya respons untuk dipakai.
+  additionalPrecacheEntries: [{ url: '/offline', revision: randomUUID() }],
+  // `skipWaiting` bukan opsi @serwist/next; diatur di src/app/sw.ts.
+  // Nilainya false agar SW baru menunggu, bukan mengambil alih tab terbuka
+  // di tengah proses checkout/KYC.
 });
 
-export default withPWA(nextConfig);
+export default withSerwist(nextConfig);
