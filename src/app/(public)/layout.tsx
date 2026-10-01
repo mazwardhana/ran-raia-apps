@@ -52,6 +52,8 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
                   <Anchor component={Link} href="/" size="sm" c="dimmed" underline="hover">Beranda</Anchor>
                   <Anchor component={Link} href="/paket" size="sm" c="dimmed" underline="hover">Paket</Anchor>
                   <Anchor component={Link} href="/artikel" size="sm" c="dimmed" underline="hover">Artikel</Anchor>
+                  <Anchor component={Link} href="/syarat-ketentuan" size="sm" c="dimmed" underline="hover">Syarat & Ketentuan</Anchor>
+                  <Anchor component={Link} href="/kebijakan-privasi" size="sm" c="dimmed" underline="hover">Kebijakan Privasi</Anchor>
                 </Stack>
                 <Stack gap="xs">
                   <Text fw={600} size="sm">Akun</Text>
