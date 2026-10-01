@@ -200,7 +200,7 @@ export default async function OwnershipDetailPage({
               Distribusi profit
             </Text>
             {profits.length > 0 ? (
-              <Box style={{ overflowX: 'auto' }}>
+              <Table.ScrollContainer minWidth={480}>
                 <Table>
                   <TableThead>
                     <TableTr>
@@ -225,7 +225,7 @@ export default async function OwnershipDetailPage({
                     ))}
                   </TableTbody>
                 </Table>
-              </Box>
+              </Table.ScrollContainer>
             ) : (
               <Text size="sm" c="dimmed">
                 Belum ada distribusi profit untuk paket ini.

@@ -18,6 +18,7 @@ import {
   ThemeIcon,
   Title,
 } from '@mantine/core';
+import { useMediaQuery } from '@mantine/hooks';
 import { IconAlertCircle, IconCircleCheck, IconInfoCircle } from '@tabler/icons-react';
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
@@ -60,6 +61,15 @@ declare global {
 
 const MIN_LOTS = 5;
 
+// Di bawah 768px ringkasan dan tombol bayar menempel di dasar layar supaya user
+// tidak perlu menggulir jauh untuk konfirmasi. Bar fixed tidak ikut padding body,
+// jadi sisipan bawah harus menghitung tinggi nav plus safe-area nav sekali saja.
+const MOBILE_QUERY = '(max-width: 767px)';
+const MOBILE_CTA_PADDING_BOTTOM = 'calc(var(--bottomnav-h) + env(safe-area-inset-bottom))';
+// Ruang cadangan di dasar halaman agar konten terakhir tidak tertutup bar CTA
+// (di atas padding var(--bottomnav-h) milik AppShell).
+const MOBILE_CTA_SPACE = 120;
+
 function readModeFromUrl(): OwnershipType {
   if (typeof window !== 'undefined') {
     const params = new URLSearchParams(window.location.search);
@@ -87,6 +97,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [fallbackUrl, setFallbackUrl] = useState<string | null>(null);
   const [paid, setPaid] = useState(false);
+  const isMobile = useMediaQuery(MOBILE_QUERY);
 
   useEffect(() => {
     let cancelled = false;
@@ -294,7 +305,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
       <div>
         <Title order={3}>Checkout</Title>
         <Text c="dimmed" size="sm">
-          {pkg.code} — {pkg.title}
+          {pkg.code} · {pkg.title}
         </Text>
       </div>
 
@@ -374,7 +385,7 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
             {ownership === 'LOT' && (
               <NumberInput
                 label="Jumlah lot"
-                description={`Min. ${MIN_LOTS} lot — subtotal minimal ${formatRupiah(50000)}`}
+                description={`Min. ${MIN_LOTS} lot, subtotal minimal ${formatRupiah(50000)}`}
                 value={lots}
                 onChange={setLots}
                 min={1}
@@ -385,7 +396,26 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
               />
             )}
 
-            <Box>
+            <Box
+              style={
+                isMobile
+                  ? {
+                      position: 'fixed',
+                      left: 0,
+                      right: 0,
+                      bottom: 0,
+                      zIndex: 90,
+                      backgroundColor: 'var(--mantine-color-body)',
+                      borderTop: '1px solid var(--mantine-color-gray-3)',
+                      padding: '12px 16px',
+                      // Isi bar berhenti tepat di atas bottom nav; area padding
+                      // ini tertutup nav (z-index lebih tinggi), tidak dobel.
+                      paddingBottom: MOBILE_CTA_PADDING_BOTTOM,
+                      boxShadow: '0 -4px 12px rgba(0, 0, 0, 0.06)',
+                    }
+                  : undefined
+              }
+            >
               <Group justify="space-between" mb={4}>
                 <Text size="sm">Subtotal</Text>
                 <Text fw={700}>
@@ -398,42 +428,72 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
                   )}
                 </Text>
               </Group>
-              <Group justify="space-between" mb={4}>
-                <Text size="sm">Biaya layanan</Text>
-                <Text size="sm">{formatRupiah(0)}</Text>
-              </Group>
-              <Text size="xs" c="dimmed">
-                Nilai investasi dikembalikan di akhir periode sesuai realisasi ternak.
-              </Text>
+              {!isMobile && (
+                <>
+                  <Group justify="space-between" mb={4}>
+                    <Text size="sm">Biaya layanan</Text>
+                    <Text size="sm">{formatRupiah(0)}</Text>
+                  </Group>
+                  <Text size="xs" c="dimmed">
+                    Nilai investasi dikembalikan di akhir periode sesuai realisasi ternak.
+                  </Text>
+                </>
+              )}
+
+              <Button
+                onClick={handlePay}
+                disabled={!!issue}
+                loading={submitting}
+                mih={44}
+                size="md"
+                fullWidth={isMobile}
+                mt={isMobile ? 8 : undefined}
+              >
+                Bayar sekarang
+              </Button>
             </Box>
 
-            <Button
-              onClick={handlePay}
-              disabled={!!issue}
-              loading={submitting}
-              mih={44}
-              size="md"
-            >
-              Bayar sekarang
-            </Button>
+            {!isMobile && (
+              <>
+                <Text size="xs" c="dimmed">
+                  Pembayaran diproses oleh Midtrans (Sandbox). Setelah bayar, pantau status di{' '}
+                  <Link href="/app/transaksi">halaman transaksi</Link>.
+                </Text>
 
-            <Text size="xs" c="dimmed">
-              Pembayaran diproses oleh Midtrans (Sandbox). Setelah bayar, pantau status di{' '}
-              <Link href="/app/transaksi">halaman transaksi</Link>.
-            </Text>
-
-            <Button
-              variant="light"
-              color="gray"
-              component={Link}
-              href={`/app/paket/${pkg.id}`}
-              mih={44}
-            >
-              Kembali ke detail paket
-            </Button>
+                <Button
+                  variant="light"
+                  color="gray"
+                  component={Link}
+                  href={`/app/paket/${pkg.id}`}
+                  mih={44}
+                >
+                  Kembali ke detail paket
+                </Button>
+              </>
+            )}
           </Stack>
         </Card>
       </SimpleGrid>
+
+      {isMobile && (
+        <Button
+          variant="light"
+          color="gray"
+          component={Link}
+          href={`/app/paket/${pkg.id}`}
+          mih={44}
+          fullWidth
+        >
+          Kembali ke detail paket
+        </Button>
+      )}
+
+      {isMobile && (
+        <Text size="xs" c="dimmed">
+          Pembayaran diproses oleh Midtrans (Sandbox). Setelah bayar, pantau status di{' '}
+          <Link href="/app/transaksi">halaman transaksi</Link>.
+        </Text>
+      )}
 
       <List
         size="sm"
@@ -449,6 +509,8 @@ export default function CheckoutPage({ params }: { params: { id: string } }) {
         <List.Item>KYC wajib terverifikasi sebelum checkout.</List.Item>
         <List.Item>Pembelian penuh hanya tersedia bila belum ada yang terjual.</List.Item>
       </List>
+
+      {isMobile && <Box style={{ height: MOBILE_CTA_SPACE }} aria-hidden />}
     </Stack>
   );
 }

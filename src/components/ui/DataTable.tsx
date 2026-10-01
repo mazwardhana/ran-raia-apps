@@ -3,7 +3,6 @@ import {
   Box,
   Group,
   Paper,
-  ScrollArea,
   Select,
   Stack,
   Table,
@@ -139,8 +138,10 @@ export function DataTable<T extends Record<string, unknown>>({
       </Group>
 
       <Paper withBorder>
-        <ScrollArea>
-          <Table striped highlightOnHover style={{ minWidth: 360 }}>
+        {/* ScrollContainer menjaga scroll tetap di dalam tabel, bukan di
+            seluruh halaman, saat kolom lebih lebar dari layar HP. */}
+        <Table.ScrollContainer minWidth={360}>
+          <Table striped highlightOnHover>
             <TableThead>
               <TableTr>
                 {columns.map((column) => (
@@ -195,7 +196,7 @@ export function DataTable<T extends Record<string, unknown>>({
               ))}
             </TableTbody>
           </Table>
-        </ScrollArea>
+        </Table.ScrollContainer>
       </Paper>
 
       <Group justify="space-between" wrap="wrap">
