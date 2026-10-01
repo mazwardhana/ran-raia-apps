@@ -42,13 +42,6 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
         {children}
       </Box>
 
-      {/* Spacer + bottom nav hanya di bawah 768px, supaya footer tidak
-          tertutup bar tetap dan layar lebar tetap memakai nav header. */}
-      <Box hiddenFrom="md">
-        <Box h="var(--bottomnav-h)" />
-        <PublicBottomNav />
-      </Box>
-
       <Box
         component="footer"
         py="xl"
@@ -88,6 +81,12 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
           </Stack>
         </Container>
       </Box>
+
+      {/* Bottom nav mobile dirender setelah footer, dan spacer-nya ikut di dalam
+          komponen nav: spacer mengikuti footer sehingga nav fixed tidak menutupi
+          tautan legal dan baris copyright, serta hilang bersama nav di halaman
+          autentikasi (/login, /register). */}
+      <PublicBottomNav />
     </Stack>
   );
 }

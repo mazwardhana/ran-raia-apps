@@ -131,7 +131,7 @@ export function ValuePropositions() {
         <Grid>
           {VALUE_PROPS.map((prop, i) => (
             <GridCol key={i} span={{ base: 12, sm: 6, md: 3 }}>
-              <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
+              <Card shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                 <Stack gap="md">
                   <IconCheck size={32} color={TEAL_ICON} />
                   <Text fw={600} size="lg">{prop.title}</Text>
@@ -154,7 +154,7 @@ export function HowItWorksSection() {
           <Title order={2} ta="center">Cara Kerja</Title>
           <Stack gap="lg">
             {HOW_IT_WORKS.map((item, i) => (
-              <Card key={i} className="card-hover" shadow="sm" padding="lg" radius="md" withBorder bg="white">
+              <Card key={i} shadow="sm" padding="lg" radius="md" withBorder bg="white">
                 <Group align="flex-start">
                   <Box
                     style={{
@@ -198,7 +198,7 @@ export function WhyRaiaSection() {
             const Icon = icons[i] ?? IconCheck;
             return (
               <GridCol key={i} span={{ base: 12, md: 4 }}>
-                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
+                <Card shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                   <Stack gap="md">
                     <Icon size={32} color={TEAL_ICON} />
                     <Text fw={600} size="lg">{item.title}</Text>
@@ -230,7 +230,7 @@ export function TransparencySection() {
           <Grid>
             {AUDIT_STEPS.map((step) => (
               <GridCol key={step.title} span={{ base: 12, sm: 6 }}>
-                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
+                <Card shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                   <Group align="flex-start" wrap="nowrap">
                     <step.icon size={32} color={TEAL_ICON} aria-hidden="true" />
                     <Stack gap="xs">
@@ -299,16 +299,14 @@ export function FeaturedPackages({ packages }: { packages: PackageCardData[] }) 
           <Grid>
             {packages.slice(0, 3).map((pkg) => (
               <GridCol key={pkg.code} span={{ base: 12, md: 4 }}>
-                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
+                <Card shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                   <Stack gap="md">
-                    <Box className="card-hover-media" style={{ borderRadius: 'var(--mantine-radius-sm)' }}>
-                      <PackageImage
-                        src={pkg.coverImage}
-                        animalType={pkg.animalType}
-                        alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
-                        height={160}
-                      />
-                    </Box>
+                    <PackageImage
+                      src={pkg.coverImage}
+                      animalType={pkg.animalType}
+                      alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+                      height={160}
+                    />
                     <Text fw={600} size="lg">{pkg.title}</Text>
                     <Text size="sm" c="dimmed">{pkg.description || 'Paket investasi ternak'}</Text>
                     <Group justify="space-between">
