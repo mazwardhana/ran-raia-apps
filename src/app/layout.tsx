@@ -1,10 +1,19 @@
 import type { Metadata } from 'next';
-import { ColorSchemeScript, MantineProvider } from '@mantine/core';
+import { Plus_Jakarta_Sans } from 'next/font/google';
+import { ColorSchemeScript } from '@mantine/core';
 import '@mantine/core/styles.css';
 import '@mantine/notifications/styles.css';
 import '@mantine/charts/styles.css';
 import './globals.css';
-import { theme } from '@/theme/theme';
+import { Providers } from './providers';
+
+// Plus Jakarta Sans dirancang untuk pasar Indonesia: x-height besar dan angka
+// jelas, penting untuk tabel nominal rupiah. Di-self-host saat build.
+const jakarta = Plus_Jakarta_Sans({
+  subsets: ['latin'],
+  display: 'swap',
+  variable: '--font-jakarta',
+});
 
 export const metadata: Metadata = {
   title: 'Raia - Investasi Ternak',
@@ -23,12 +32,10 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="id" className={jakarta.variable} suppressHydrationWarning>
       <head><ColorSchemeScript defaultColorScheme="light" /></head>
       <body>
-        <MantineProvider theme={theme} defaultColorScheme="light">
-          {children}
-        </MantineProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   );

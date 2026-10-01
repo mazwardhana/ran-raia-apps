@@ -1,4 +1,17 @@
 *, *::before, *::after { box-sizing: border-box; }
 html, body { max-width: 100vw; overflow-x: hidden; }
-body { margin: 0; font-family: 'Inter', system-ui, sans-serif; }
+
+:root {
+  /* Tinggi shell dipakai bersama AppHeader, BottomNav, dan AppShell. */
+  --header-h: 68px;    /* padding 12+12 + ActionIcon 44 */
+  --bottomnav-h: 76px;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font-jakarta), system-ui, sans-serif;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+}
 a { color: inherit; text-decoration: none; }
+h1, h2, h3 { text-wrap: balance; }
