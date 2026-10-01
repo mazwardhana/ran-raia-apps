@@ -1,11 +1,10 @@
-import { Badge, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
+import { Badge, Box, Card, Group, SimpleGrid, Stack, Text } from '@mantine/core';
 import Link from 'next/link';
 
 import { EmptyState } from '@/components/ui/EmptyState';
 import { getCurrentUser } from '@/lib/auth';
+import { formatRupiah } from '@/lib/calculations';
 import { prisma } from '@/lib/prisma';
-
-const formatRupiah = (value: number) => `Rp${value.toLocaleString('id-ID')}`;
 
 interface OwnershipItem {
   id: string;
@@ -115,24 +114,40 @@ export default async function PortofolioPage() {
         </Text>
       </div>
 
-      <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
-        {metrics.map((metric) => (
-          <Card key={metric.label} withBorder padding="md" radius="md">
-            <Text size="xs" c="dimmed">
-              {metric.label}
-            </Text>
-            <Text fw={700} size="lg">
-              {metric.value}
-            </Text>
-          </Card>
-        ))}
-      </SimpleGrid>
+      <Box bg="white" p="md" style={{ borderRadius: 'var(--mantine-radius-md)' }}>
+        <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="sm">
+          {metrics.map((metric) => (
+            <Card key={metric.label} withBorder padding="md" radius="md">
+              <Text size="xs" c="dimmed">
+                {metric.label}
+              </Text>
+              <Text fw={700} size="lg">
+                {metric.value}
+              </Text>
+            </Card>
+          ))}
+        </SimpleGrid>
+      </Box>
 
       <SimpleGrid cols={{ base: 1, md: 2 }} spacing="md">
         {items.map((item) => {
           const pkg = packageMap.get(item.packageId);
           return (
-            <Card key={`${item.type}-${item.id}`} withBorder padding="lg" radius="md">
+            <Card
+              key={`${item.type}-${item.id}`}
+              className="card-hover"
+              withBorder
+              component={Link}
+              href={`/app/portofolio/${item.id}`}
+              aria-label={`Lihat detail kepemilikan ${pkg ? pkg.title : 'paket'}`}
+              padding="lg"
+              radius="md"
+              style={{
+                textDecoration: 'none',
+                color: 'inherit',
+                display: 'block',
+              }}
+            >
               <Stack gap="md">
                 <Group justify="space-between" align="flex-start">
                   <Text fw={700}>{pkg ? pkg.title : 'Paket'}</Text>
@@ -166,24 +181,24 @@ export default async function PortofolioPage() {
                     <Text size="sm" c="dimmed">
                       Perkiraan laba
                     </Text>
-                    <Text size="sm" fw={600} c="green">
+                    <Text size="sm" fw={600} c="teal.7">
                       {formatRupiah(item.profit)}
                     </Text>
                   </Group>
                 </Stack>
 
-                <Link
-                  href={`/app/portofolio/${item.id}`}
+                <Text
+                  c="teal.7"
+                  fw={600}
                   style={{
                     display: 'inline-flex',
                     alignItems: 'center',
                     minHeight: 44,
-                    fontWeight: 600,
                     fontSize: 14,
                   }}
                 >
                   Lihat Detail
-                </Link>
+                </Text>
               </Stack>
             </Card>
           );

@@ -54,7 +54,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   WEIGHT_LOG: 'Penimbangan',
 };
 
-// Fixture demo — hanya dipakai bila data ProfitDistribution kosong.
+// Fixture demo, hanya dipakai bila data ProfitDistribution kosong.
 // Selalu ditandai "Data demo" agar tidak dianggap data nyata.
 function buildDemoProfitTrend() {
   const values = [300000, 450000, 380000, 520000, 470000, 400000];
@@ -74,21 +74,21 @@ function buildDemoEvents() {
       id: 'demo-1',
       eventType: 'BIRTH',
       eventDate: dayjs().subtract(2, 'day').toDate(),
-      description: 'Kelahiran ternak — data demo',
+      description: 'Kelahiran ternak (data demo)',
       livestockTag: 'DEMO-001',
     },
     {
       id: 'demo-2',
       eventType: 'HEALTH_CHECK',
       eventDate: dayjs().subtract(5, 'day').toDate(),
-      description: 'Pemeriksaan kesehatan rutin — data demo',
+      description: 'Pemeriksaan kesehatan rutin (data demo)',
       livestockTag: 'DEMO-002',
     },
     {
       id: 'demo-3',
       eventType: 'MILK',
       eventDate: dayjs().subtract(9, 'day').toDate(),
-      description: 'Perahan susu — data demo',
+      description: 'Perahan susu (data demo)',
       livestockTag: 'DEMO-003',
     },
   ];
@@ -139,23 +139,25 @@ export function DashboardView({ data }: { data: DashboardData }) {
           </Alert>
         )}
 
-        <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }} spacing="md">
-          <MetricCard
-            icon={<IconCoin size={24} />}
-            label="Total Investasi"
-            value={formatRupiah(data.totalInvestment)}
-          />
-          <MetricCard
-            icon={<IconChartPie size={24} />}
-            label="Total Profit"
-            value={formatRupiah(data.totalProfit)}
-          />
-          <MetricCard
-            icon={<IconPackage size={24} />}
-            label="Jumlah Lot"
-            value={String(data.totalLots)}
-          />
-        </SimpleGrid>
+        <Box bg="white" p="md" style={{ borderRadius: 'var(--mantine-radius-md)' }}>
+          <SimpleGrid cols={{ base: 1, xs: 2, md: 3 }} spacing="md">
+            <MetricCard
+              icon={<IconCoin size={24} />}
+              label="Total Investasi"
+              value={formatRupiah(data.totalInvestment)}
+            />
+            <MetricCard
+              icon={<IconChartPie size={24} />}
+              label="Total Profit"
+              value={formatRupiah(data.totalProfit)}
+            />
+            <MetricCard
+              icon={<IconPackage size={24} />}
+              label="Jumlah Lot"
+              value={String(data.totalLots)}
+            />
+          </SimpleGrid>
+        </Box>
 
         <SimpleGrid cols={{ base: 1, md: 2 }} spacing="lg">
           <ChartCard title="Distribusi portofolio">
@@ -214,7 +216,7 @@ export function DashboardView({ data }: { data: DashboardData }) {
                   h={240}
                   data={lineData}
                   dataKey="month"
-                  series={[{ name: 'profit', label: 'Profit', color: 'blue.6' }]}
+                  series={[{ name: 'profit', label: 'Profit', color: 'teal.6' }]}
                   curveType="linear"
                   withLegend={false}
                   gridAxis="xy"

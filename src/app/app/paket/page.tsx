@@ -229,10 +229,12 @@ export default function CatalogPage() {
               return (
                 <Card
                   key={pkg.id}
+                  className="card-hover"
                   withBorder
                   padding="sm"
                   component={Link}
                   href={`/app/paket/${pkg.id}`}
+                  aria-label={`Lihat detail paket ${pkg.title}`}
                   style={{
                     textDecoration: 'none',
                     color: 'inherit',
@@ -241,12 +243,14 @@ export default function CatalogPage() {
                     minHeight: 44,
                   }}
                 >
-                  <PackageImage
-                    src={pkg.coverImage}
-                    animalType={pkg.animalType}
-                    alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
-                    height={160}
-                  />
+                  <Box className="card-hover-media">
+                    <PackageImage
+                      src={pkg.coverImage}
+                      animalType={pkg.animalType}
+                      alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+                      height={160}
+                    />
+                  </Box>
 
                   <Stack gap={6} mt="sm" style={{ flex: 1 }}>
                     <Group justify="space-between" align="flex-start" wrap="nowrap">
