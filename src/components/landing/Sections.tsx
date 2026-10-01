@@ -46,7 +46,7 @@ const AUDIT_STEPS = [
     icon: IconReceipt2,
     title: 'Rincian biaya sebelum bayar',
     description:
-      'Komposisi harga (ternak, ta\'awun, sewa kandang, pakan, tenaga kerja, obat) tampil rinci di halaman paket dan checkout.',
+      'Komposisi harga (ternak, ta\'awun, sewa kandang, pakan, tenaga kerja, obat) tampil rinci di halaman paket, sebelum checkout.',
   },
   {
     icon: IconHeartHandshake,

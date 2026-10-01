@@ -27,7 +27,15 @@ export function PublicNav() {
   if (isMobile) {
     return (
       <>
-        <Burger opened={opened} onClick={toggle} aria-label="Buka menu navigasi" size="sm" />
+        {/* Burger adalah UnstyledButton, jadi default 44px theme tidak berlaku.
+            minHeight/minWidth eksplisit menjaga target sentuh tetap 44x44. */}
+        <Burger
+          opened={opened}
+          onClick={toggle}
+          aria-label="Buka menu navigasi"
+          size="sm"
+          style={{ minHeight: 44, minWidth: 44 }}
+        />
         <Drawer
           opened={opened}
           onClose={close}
