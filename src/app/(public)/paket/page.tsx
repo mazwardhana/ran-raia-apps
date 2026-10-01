@@ -1,9 +1,14 @@
 import { Badge, Box, Button, Card, Container, Divider, Grid, GridCol, Group, Stack, Text, Title } from '@mantine/core';
 import Link from 'next/link';
+import { PackageImage } from '@/components/ui/PackageImage';
 import { prisma } from '@/lib/prisma';
 import { generateSeo } from '@/lib/seo';
 import { packages as packageFixtures } from '../../../../prisma/seed-data/packages';
 import type { PackageCardData } from '@/components/landing/data';
+
+// Kartu publik perlu coverImage untuk gambar default; landing (Fase 3) belum
+// memakainya, jadi perluas tipe di sini tanpa menyentuh kontrak landing.
+type PublicPackageCardData = PackageCardData & { coverImage: string | null };
 
 export const dynamic = 'force-dynamic';
 
@@ -27,7 +32,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 export default async function PaketPublicPage() {
-  let packages: PackageCardData[] = [];
+  let packages: PublicPackageCardData[] = [];
 
   try {
     const fromDb = await prisma.package.findMany({
@@ -47,6 +52,7 @@ export default async function PaketPublicPage() {
       soldLots: pkg.soldLots,
       status: pkg.status,
       description: pkg.description,
+      coverImage: pkg.coverImage,
       estimatedRoi: pkg.estimatedRoi,
       siteName: pkg.siteProject.name,
       legalEntity: pkg.siteProject.legalEntity,
@@ -71,6 +77,7 @@ export default async function PaketPublicPage() {
         soldLots: p.soldLots,
         status: p.status,
         description: p.description,
+        coverImage: p.coverImage,
         estimatedRoi: p.estimatedRoi,
         siteName: p.siteCode,
         legalEntity: 'PT Demo',
@@ -107,6 +114,12 @@ export default async function PaketPublicPage() {
             <GridCol key={pkg.code} span={{ base: 12, md: 6, lg: 4 }}>
               <Card shadow="sm" padding="lg" radius="md" h="100%">
                 <Stack gap="md">
+                  <PackageImage
+                    src={pkg.coverImage}
+                    animalType={pkg.animalType}
+                    alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+                    height={160}
+                  />
                   <Group justify="space-between">
                     <StatusBadge status={pkg.status} />
                     <Badge variant="light">

@@ -5,7 +5,6 @@ import {
   Button,
   Card,
   Group,
-  Image,
   Progress,
   Select,
   SimpleGrid,
@@ -23,6 +22,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { BaseModal } from '@/components/ui/BaseModal';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { ErrorState } from '@/components/ui/ErrorState';
+import { PackageImage } from '@/components/ui/PackageImage';
 import { SearchableSelect } from '@/components/ui/SearchableSelect';
 import { StatusBadge } from '@/components/ui/StatusBadge';
 import { formatRupiah } from '@/lib/calculations';
@@ -241,30 +241,12 @@ export default function CatalogPage() {
                     minHeight: 44,
                   }}
                 >
-                  {pkg.coverImage ? (
-                    <Image
-                      src={pkg.coverImage}
-                      alt={`Foto paket ${pkg.title}`}
-                      height={160}
-                      fit="cover"
-                      radius="sm"
-                    />
-                  ) : (
-                    <Box
-                      h={160}
-                      style={{
-                        borderRadius: 'var(--mantine-radius-sm)',
-                        backgroundColor: 'var(--mantine-color-gray-1)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                      }}
-                    >
-                      <Text size="sm" c="dimmed">
-                        {pkg.animalType === 'KAMBING' ? 'Kambing' : 'Sapi'}
-                      </Text>
-                    </Box>
-                  )}
+                  <PackageImage
+                    src={pkg.coverImage}
+                    animalType={pkg.animalType}
+                    alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+                    height={160}
+                  />
 
                   <Stack gap={6} mt="sm" style={{ flex: 1 }}>
                     <Group justify="space-between" align="flex-start" wrap="nowrap">
