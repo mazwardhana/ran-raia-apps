@@ -1,4 +1,4 @@
-import { Button, Container, Stack, Text, Title } from '@mantine/core';
+import { Button, Center, Container, Stack, Text, Title } from '@mantine/core';
 import Link from 'next/link';
 
 /**
@@ -7,23 +7,25 @@ import Link from 'next/link';
  */
 export default function OfflinePage() {
   return (
-    <Container size="xs" py="xl">
-      <Stack align="center" gap="md" ta="center">
-        <Title order={1}>Anda sedang tidak tersambung</Title>
-        <Text c="dimmed">
-          Koneksi internet terputus, jadi data terbaru belum bisa dimuat.
-          Silakan coba lagi saat jaringan Anda kembali.
-        </Text>
-        <Button
-          component={Link}
-          href="/"
-          variant="light"
-          size="md"
-          aria-label="Kembali ke beranda"
-        >
-          Kembali ke beranda
-        </Button>
-      </Stack>
-    </Container>
+    <Center mih="100dvh" px="md">
+      <Container size="xs">
+        <Stack align="center" gap="md" ta="center">
+          <Title order={1}>Anda sedang tidak tersambung</Title>
+          <Text c="dimmed">
+            Koneksi internet terputus, jadi data terbaru belum bisa dimuat.
+            Silakan coba lagi saat jaringan Anda kembali.
+          </Text>
+          <Button
+            component={Link}
+            href="/"
+            variant="light"
+            size="md"
+            aria-label="Kembali ke beranda"
+          >
+            Kembali ke beranda
+          </Button>
+        </Stack>
+      </Container>
+    </Center>
   );
 }

@@ -20,9 +20,10 @@ export const theme = createTheme({
   fontFamily: 'var(--font-jakarta), system-ui, sans-serif',
   defaultRadius: 'md',
   components: {
+    // Jangan paksa `centered` di sini: BaseModal memakai Drawer bottom sheet
+    // di mobile dan hanya memusatkan modal di layar >= 768px.
     Modal: {
       defaultProps: {
-        centered: true,
         overlayProps: { backgroundOpacity: 0.55, blur: 3 },
       },
     },
