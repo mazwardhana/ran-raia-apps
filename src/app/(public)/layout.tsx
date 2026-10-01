@@ -2,6 +2,7 @@ import { Box, Container, Group, Stack, Text, Anchor, Divider } from '@mantine/co
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import { PublicNav } from '@/components/landing/PublicNav';
+import { PublicBottomNav } from '@/components/shared/PublicBottomNav';
 
 // Anchor di footer dan logo header dijadikan blok setinggi 44px supaya
 // target sentuh tetap memenuhi minimum di layar kecil.
@@ -39,6 +40,13 @@ export default function PublicLayout({ children }: { children: ReactNode }) {
 
       <Box component="main" style={{ flex: 1 }}>
         {children}
+      </Box>
+
+      {/* Spacer + bottom nav hanya di bawah 768px, supaya footer tidak
+          tertutup bar tetap dan layar lebar tetap memakai nav header. */}
+      <Box hiddenFrom="md">
+        <Box h="var(--bottomnav-h)" />
+        <PublicBottomNav />
       </Box>
 
       <Box

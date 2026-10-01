@@ -19,6 +19,7 @@ export interface PackageCardData {
   soldLots: number;
   status: string;
   description: string | null;
+  coverImage: string | null;
   estimatedRoi: number | null;
   siteName: string;
   legalEntity: string;

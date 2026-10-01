@@ -24,6 +24,7 @@ import {
 import Image from 'next/image';
 import Link from 'next/link';
 import type { Article } from '@prisma/client';
+import { PackageImage } from '@/components/ui/PackageImage';
 import { HOW_IT_WORKS, VALUE_PROPS, WHY_RAIA, type PackageCardData } from './data';
 import { FaqAccordion } from './FaqAccordion';
 
@@ -130,7 +131,7 @@ export function ValuePropositions() {
         <Grid>
           {VALUE_PROPS.map((prop, i) => (
             <GridCol key={i} span={{ base: 12, sm: 6, md: 3 }}>
-              <Card shadow="sm" padding="lg" radius="md" h="100%">
+              <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                 <Stack gap="md">
                   <IconCheck size={32} color={TEAL_ICON} />
                   <Text fw={600} size="lg">{prop.title}</Text>
@@ -147,13 +148,13 @@ export function ValuePropositions() {
 
 export function HowItWorksSection() {
   return (
-    <Box py={60} style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
+    <Box py={60} style={{ backgroundColor: 'var(--mantine-color-white)' }}>
       <Container size="lg">
         <Stack gap="xl">
           <Title order={2} ta="center">Cara Kerja</Title>
           <Stack gap="lg">
             {HOW_IT_WORKS.map((item, i) => (
-              <Card key={i} shadow="sm" padding="lg" radius="md">
+              <Card key={i} className="card-hover" shadow="sm" padding="lg" radius="md" withBorder bg="white">
                 <Group align="flex-start">
                   <Box
                     style={{
@@ -197,7 +198,7 @@ export function WhyRaiaSection() {
             const Icon = icons[i] ?? IconCheck;
             return (
               <GridCol key={i} span={{ base: 12, md: 4 }}>
-                <Card shadow="sm" padding="lg" radius="md" h="100%">
+                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                   <Stack gap="md">
                     <Icon size={32} color={TEAL_ICON} />
                     <Text fw={600} size="lg">{item.title}</Text>
@@ -229,7 +230,7 @@ export function TransparencySection() {
           <Grid>
             {AUDIT_STEPS.map((step) => (
               <GridCol key={step.title} span={{ base: 12, sm: 6 }}>
-                <Card shadow="sm" padding="lg" radius="md" h="100%">
+                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
                   <Group align="flex-start" wrap="nowrap">
                     <step.icon size={32} color={TEAL_ICON} aria-hidden="true" />
                     <Stack gap="xs">
@@ -291,42 +292,52 @@ export function FinalCta() {
 
 export function FeaturedPackages({ packages }: { packages: PackageCardData[] }) {
   return (
-    <Container size="lg" py={60}>
-      <Stack gap="xl">
-        <Title order={2} ta="center">Paket Unggulan</Title>
-        <Grid>
-          {packages.slice(0, 3).map((pkg) => (
-            <GridCol key={pkg.code} span={{ base: 12, md: 4 }}>
-              <Card shadow="sm" padding="lg" radius="md" h="100%">
-                <Stack gap="md">
-                  <Text fw={600} size="lg">{pkg.title}</Text>
-                  <Text size="sm" c="dimmed">{pkg.description || 'Paket investasi ternak'}</Text>
-                  <Group justify="space-between">
-                    <Box>
-                      <Text size="xs" c="dimmed">Harga Paket</Text>
-                      <Text fw={700} size="lg">Rp{pkg.price.toLocaleString('id-ID')}</Text>
+    <Box py={60} style={{ backgroundColor: 'var(--mantine-color-gray-0)' }}>
+      <Container size="lg">
+        <Stack gap="xl">
+          <Title order={2} ta="center">Paket Unggulan</Title>
+          <Grid>
+            {packages.slice(0, 3).map((pkg) => (
+              <GridCol key={pkg.code} span={{ base: 12, md: 4 }}>
+                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white">
+                  <Stack gap="md">
+                    <Box className="card-hover-media" style={{ borderRadius: 'var(--mantine-radius-sm)' }}>
+                      <PackageImage
+                        src={pkg.coverImage}
+                        animalType={pkg.animalType}
+                        alt={`Ilustrasi ${pkg.animalType === 'KAMBING' ? 'kambing' : 'sapi'} paket ${pkg.title}`}
+                        height={160}
+                      />
                     </Box>
-                    <Box>
-                      <Text size="xs" c="dimmed">ROI Estimasi</Text>
-                      <Text fw={700} size="lg" c="green">{pkg.estimatedRoi || 0}%</Text>
-                    </Box>
-                  </Group>
-                  <Text size="xs" c="dimmed">{pkg.legalEntity} • {pkg.location}</Text>
-                  <Button component={Link} href="/paket" variant="light" fullWidth>
-                    Lihat Detail
-                  </Button>
-                </Stack>
-              </Card>
-            </GridCol>
-          ))}
-        </Grid>
-        <Group justify="center">
-          <Button component={Link} href="/paket" variant="outline" size="md">
-            Lihat Semua Paket
-          </Button>
-        </Group>
-      </Stack>
-    </Container>
+                    <Text fw={600} size="lg">{pkg.title}</Text>
+                    <Text size="sm" c="dimmed">{pkg.description || 'Paket investasi ternak'}</Text>
+                    <Group justify="space-between">
+                      <Box>
+                        <Text size="xs" c="dimmed">Harga Paket</Text>
+                        <Text fw={700} size="lg">Rp{pkg.price.toLocaleString('id-ID')}</Text>
+                      </Box>
+                      <Box>
+                        <Text size="xs" c="dimmed">ROI Estimasi</Text>
+                        <Text fw={700} size="lg" c="teal.7">{pkg.estimatedRoi || 0}%</Text>
+                      </Box>
+                    </Group>
+                    <Text size="xs" c="dimmed">{pkg.legalEntity} • {pkg.location}</Text>
+                    <Button component={Link} href="/paket" variant="light" fullWidth>
+                      Lihat Detail
+                    </Button>
+                  </Stack>
+                </Card>
+              </GridCol>
+            ))}
+          </Grid>
+          <Group justify="center">
+            <Button component={Link} href="/paket" variant="outline" size="md">
+              Lihat Semua Paket
+            </Button>
+          </Group>
+        </Stack>
+      </Container>
+    </Box>
   );
 }
 
@@ -339,7 +350,7 @@ export function LatestArticles({ articles }: { articles: Article[] }) {
           <Grid>
             {articles.slice(0, 3).map((article) => (
               <GridCol key={article.slug} span={{ base: 12, md: 4 }}>
-                <Card shadow="sm" padding="lg" radius="md" h="100%" component={Link} href={`/artikel/${article.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
+                <Card className="card-hover" shadow="sm" padding="lg" radius="md" h="100%" withBorder bg="white" component={Link} href={`/artikel/${article.slug}`} style={{ textDecoration: 'none', color: 'inherit' }}>
                   <Stack gap="md">
                     <Text fw={600} size="md" lineClamp={2}>{article.title}</Text>
                     <Text size="sm" c="dimmed" lineClamp={3}>{article.excerpt}</Text>
