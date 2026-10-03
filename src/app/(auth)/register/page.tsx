@@ -1,8 +1,9 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { Anchor, Button, Stack, Text, TextInput } from '@mantine/core';
+import { ActionIcon, Alert, Anchor, Button, Divider, Stack, Text, TextInput } from '@mantine/core';
 import { notifications } from '@mantine/notifications';
+import { IconAlertCircle, IconEye, IconEyeOff } from '@tabler/icons-react';
 import { signIn } from 'next-auth/react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -15,10 +16,14 @@ import { registerSchema } from '@/lib/validation';
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
+// Jeda singkat supaya notifikasi sukses sempat terbaca sebelum halaman dialihkan.
+const REDIRECT_DELAY_MS = 800;
+
 export default function RegisterPage() {
   const router = useRouter();
   const [serverError, setServerError] = useState<string>('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -57,8 +62,8 @@ export default function RegisterPage() {
 
       notifications.show({
         title: 'Registrasi berhasil',
-        message: 'Akun Anda telah dibuat. Silakan masuk.',
-        color: 'green',
+        message: 'Akun Anda berhasil dibuat.',
+        color: 'teal',
       });
 
       const signInResult = await signIn('credentials', {
@@ -66,6 +71,9 @@ export default function RegisterPage() {
         password: data.password,
         redirect: false,
       });
+
+      // Beri jeda agar notifikasi sukses terlihat sebelum pindah halaman.
+      await new Promise((resolve) => setTimeout(resolve, REDIRECT_DELAY_MS));
 
       if (signInResult?.ok) {
         router.push('/kyc');
@@ -82,9 +90,13 @@ export default function RegisterPage() {
     <AuthShell title="Daftar Akun" subtitle="Buat akun baru untuk mulai berinvestasi">
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack gap="md">
+          <Divider label="Data akun" labelPosition="left" />
+
           <TextInput
             label="Nama"
             placeholder="Nama lengkap Anda"
+            autoComplete="name"
+            autoFocus
             {...register('name')}
             error={errors.name?.message}
             required
@@ -94,6 +106,7 @@ export default function RegisterPage() {
             label="Username"
             placeholder="username_anda"
             description="Huruf kecil, angka, dan underscore. Min 3 karakter."
+            autoComplete="username"
             {...register('username')}
             error={errors.username?.message}
             required
@@ -103,36 +116,77 @@ export default function RegisterPage() {
             label="Email"
             type="email"
             placeholder="email@example.com"
+            autoComplete="email"
+            inputMode="email"
             {...register('email')}
             error={errors.email?.message}
             required
           />
 
+          <Divider label="Keamanan" labelPosition="left" mt="xs" />
+
           <TextInput
             label="Password"
-            type="password"
+            type={showPassword ? 'text' : 'password'}
             placeholder="Minimal 8 karakter"
+            autoComplete="new-password"
+            rightSectionWidth={44}
+            rightSectionPointerEvents="auto"
+            rightSection={
+              <ActionIcon
+                variant="subtle"
+                onClick={() => setShowPassword((current) => !current)}
+                aria-label={showPassword ? 'Sembunyikan password' : 'Tampilkan password'}
+                aria-pressed={showPassword}
+              >
+                {showPassword ? <IconEyeOff size={18} /> : <IconEye size={18} />}
+              </ActionIcon>
+            }
             {...register('password')}
             error={errors.password?.message}
             required
           />
 
           <TextInput
-            label="Nomor Telepon"
+            label="Nomor Telepon (opsional)"
             placeholder="081234567890"
-            {...register('phone')}
+            autoComplete="tel"
+            inputMode="tel"
+            {...register('phone', {
+              // Kolom ini benar-benar opsional: kirim undefined, bukan string kosong,
+              // supaya aturan min(8) tidak memblokir form yang dibiarkan kosong.
+              setValueAs: (value: string) => (value === '' ? undefined : value),
+            })}
             error={errors.phone?.message}
           />
 
           {serverError && (
-            <Text size="sm" c="red">
+            <Alert
+              color="#c92a2a"
+              variant="light"
+              icon={<IconAlertCircle size={18} />}
+              styles={{ message: { color: '#c92a2a' } }}
+              aria-live="polite"
+            >
               {serverError}
-            </Text>
+            </Alert>
           )}
 
           <Button type="submit" loading={isSubmitting} fullWidth mt="sm">
             Daftar
           </Button>
+
+          <Text size="xs" ta="center" c="dimmed">
+            Dengan mendaftar, Anda menyetujui{' '}
+            <Anchor component={Link} href="/syarat-ketentuan" size="xs">
+              Syarat &amp; Ketentuan
+            </Anchor>{' '}
+            dan{' '}
+            <Anchor component={Link} href="/kebijakan-privasi" size="xs">
+              Kebijakan Privasi
+            </Anchor>
+            .
+          </Text>
 
           <Text size="sm" ta="center" c="dimmed">
             Sudah punya akun?{' '}

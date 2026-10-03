@@ -19,6 +19,14 @@ vi.mock('next-auth/react', () => ({
   signIn: vi.fn(),
 }));
 
+vi.mock('@mantine/notifications', () => ({
+  notifications: {
+    show: vi.fn(),
+    hide: vi.fn(),
+    update: vi.fn(),
+  },
+}));
+
 const routerMock = vi.hoisted(() => ({
   push: vi.fn(),
   replace: vi.fn(),
@@ -99,7 +107,9 @@ describe('Registration, Login, and KYC Flow', () => {
     await user.type(screen.getByLabelText(/nama/i), 'Budi Santoso');
     await user.type(screen.getByLabelText(/username/i), 'budi_investor');
     await user.type(screen.getByLabelText(/email/i), 'budi@example.com');
-    await user.type(screen.getByLabelText(/password/i), 'password123');
+    // Toggle lihat password juga punya aria-label mengandung "password",
+    // jadi pakai pola berawalan agar hanya field password yang terpilih.
+    await user.type(screen.getByLabelText(/^password/i), 'password123');
     await user.type(screen.getByLabelText(/telepon/i), '081234567890');
 
     const submitButton = screen.getByRole('button', { name: /daftar/i });
@@ -108,6 +118,63 @@ describe('Registration, Login, and KYC Flow', () => {
     await waitFor(() => {
       expect(screen.getByText(/username atau email sudah digunakan/i)).toBeInTheDocument();
     });
+  });
+
+  it('register page links to the real legal pages', async () => {
+    const { default: RegisterPage } = await import('@/app/(auth)/register/page');
+    renderWithTheme(<RegisterPage />);
+
+    expect(screen.getByRole('link', { name: /syarat & ketentuan/i })).toHaveAttribute(
+      'href',
+      '/syarat-ketentuan'
+    );
+    expect(screen.getByRole('link', { name: /kebijakan privasi/i })).toHaveAttribute(
+      'href',
+      '/kebijakan-privasi'
+    );
+  });
+
+  it('register page password toggle changes the input type', async () => {
+    const user = userEvent.setup();
+
+    const { default: RegisterPage } = await import('@/app/(auth)/register/page');
+    renderWithTheme(<RegisterPage />);
+
+    const passwordInput = screen.getByLabelText(/^password/i);
+    expect(passwordInput).toHaveAttribute('type', 'password');
+
+    await user.click(screen.getByRole('button', { name: /tampilkan password/i }));
+
+    expect(passwordInput).toHaveAttribute('type', 'text');
+    expect(screen.getByRole('button', { name: /sembunyikan password/i })).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+  });
+
+  it('register page announces a server error in a polite live region', async () => {
+    const user = userEvent.setup();
+
+    global.fetch = vi.fn().mockResolvedValueOnce({
+      ok: false,
+      status: 500,
+      json: async () => ({ error: 'Registrasi gagal' }),
+    });
+
+    const { default: RegisterPage } = await import('@/app/(auth)/register/page');
+    renderWithTheme(<RegisterPage />);
+
+    await user.type(screen.getByLabelText(/nama/i), 'Budi Santoso');
+    await user.type(screen.getByLabelText(/username/i), 'budi_investor');
+    await user.type(screen.getByLabelText(/email/i), 'budi@example.com');
+    await user.type(screen.getByLabelText(/^password/i), 'password123');
+    // Nomor telepon sengaja dibiarkan kosong: field opsional tidak boleh
+    // memblokir submit.
+    await user.click(screen.getByRole('button', { name: /daftar/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveAttribute('aria-live', 'polite');
+    expect(alert).toHaveTextContent(/registrasi gagal/i);
   });
 
   it('login form accepts email OR username in single identifier field', async () => {
