@@ -1,5 +1,13 @@
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import '@testing-library/jest-dom/vitest';
+
+import { MantineProvider } from '@mantine/core';
+import { render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
+import { createElement } from 'react';
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
+
+import { theme } from '@/theme/theme';
 
 process.env.AUTH_SECRET ||= 'test-secret-for-vitest';
 
@@ -11,6 +19,17 @@ const prismaMock = vi.hoisted(() => ({
 }));
 
 vi.mock('@/lib/prisma', () => ({ prisma: prismaMock }));
+
+const signInMock = vi.hoisted(() => vi.fn());
+
+vi.mock('next-auth/react', () => ({ signIn: signInMock }));
+
+const routerMock = vi.hoisted(() => ({
+  push: vi.fn(),
+  refresh: vi.fn(),
+}));
+
+vi.mock('next/navigation', () => ({ useRouter: () => routerMock }));
 
 describe('registration', () => {
   afterEach(() => vi.clearAllMocks());
@@ -87,5 +106,102 @@ describe('route protection', () => {
     });
 
     expect(redirect).toBe('/kyc');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Halaman Login
+// ---------------------------------------------------------------------------
+
+describe('halaman login', () => {
+  beforeAll(() => {
+    class ResizeObserverMock {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    }
+
+    Object.defineProperty(window, 'ResizeObserver', {
+      configurable: true,
+      value: ResizeObserverMock,
+    });
+
+    Object.defineProperty(window, 'matchMedia', {
+      configurable: true,
+      value: (query: string) => ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener() {},
+        removeListener() {},
+        addEventListener() {},
+        removeEventListener() {},
+        dispatchEvent() {
+          return false;
+        },
+      }),
+    });
+  });
+
+  beforeEach(() => {
+    signInMock.mockReset();
+    routerMock.push.mockReset();
+    routerMock.refresh.mockReset();
+  });
+
+  async function renderLogin() {
+    const { default: LoginPage } = await import('@/app/(auth)/login/page');
+    return render(createElement(MantineProvider, { theme }, createElement(LoginPage)));
+  }
+
+  it('memasang atribut form untuk password manager dan autoFocus', async () => {
+    await renderLogin();
+
+    const identifier = screen.getByLabelText(/email atau username/i);
+    expect(identifier).toHaveAttribute('name', 'identifier');
+    expect(identifier).toHaveAttribute('autocomplete', 'username');
+    expect(identifier).toHaveFocus();
+
+    const password = screen.getByLabelText(/^password/i);
+    expect(password).toHaveAttribute('type', 'password');
+    expect(password).toHaveAttribute('autocomplete', 'current-password');
+  });
+
+  it('tombol toggle mengubah tipe input password dari password ke text', async () => {
+    const user = userEvent.setup();
+    await renderLogin();
+
+    const password = screen.getByLabelText(/^password/i);
+    expect(password).toHaveAttribute('type', 'password');
+
+    const showButton = screen.getByRole('button', { name: /tampilkan kata sandi/i });
+    expect(showButton).toHaveAttribute('aria-pressed', 'false');
+
+    await user.click(showButton);
+
+    expect(password).toHaveAttribute('type', 'text');
+    const hideButton = screen.getByRole('button', { name: /sembunyikan kata sandi/i });
+    expect(hideButton).toHaveAttribute('aria-pressed', 'true');
+  });
+
+  it('menampilkan error server lewat Alert dan memfokuskan field identifier', async () => {
+    const user = userEvent.setup();
+    signInMock.mockResolvedValue({ error: 'CredentialsSignin' });
+    await renderLogin();
+
+    const identifier = screen.getByLabelText(/email atau username/i);
+    await user.type(identifier, 'budi@example.com');
+    await user.type(screen.getByLabelText(/^password/i), 'password123');
+    await user.click(screen.getByRole('button', { name: /^masuk$/i }));
+
+    const alert = await screen.findByRole('alert');
+    expect(alert).toHaveTextContent(/email\/username atau password salah/i);
+    expect(alert).toHaveAttribute('aria-live', 'polite');
+
+    await waitFor(() => {
+      expect(identifier).toHaveFocus();
+    });
+    expect(identifier).toHaveAttribute('aria-invalid', 'true');
+    expect(identifier).toHaveAttribute('aria-describedby');
   });
 });
