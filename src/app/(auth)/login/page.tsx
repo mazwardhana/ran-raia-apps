@@ -9,6 +9,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { AuthShell } from '@/components/auth/AuthShell';
 import { loginSchema } from '@/lib/validation';
 
 type LoginFormData = z.infer<typeof loginSchema>;
@@ -56,22 +57,7 @@ export default function LoginPage() {
   };
 
   return (
-    <Stack
-      maw={480}
-      mx="auto"
-      py="xl"
-      px="md"
-      style={{ minHeight: '100vh', justifyContent: 'center' }}
-    >
-      <Stack gap="xs" mb="md">
-        <Text size="xl" fw={700}>
-          Masuk
-        </Text>
-        <Text size="sm" c="dimmed">
-          Login dengan email atau username
-        </Text>
-      </Stack>
-
+    <AuthShell title="Masuk" subtitle="Login dengan email atau username">
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack gap="md">
           <TextInput
@@ -109,6 +95,6 @@ export default function LoginPage() {
           </Text>
         </Stack>
       </form>
-    </Stack>
+    </AuthShell>
   );
 }

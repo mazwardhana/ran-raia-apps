@@ -93,7 +93,7 @@ describe('Registration, Login, and KYC Flow', () => {
       json: async () => ({ error: 'Username atau email sudah digunakan' }),
     });
 
-    const { default: RegisterPage } = await import('@/app/(public)/register/page');
+    const { default: RegisterPage } = await import('@/app/(auth)/register/page');
     renderWithTheme(<RegisterPage />);
 
     await user.type(screen.getByLabelText(/nama/i), 'Budi Santoso');
@@ -121,7 +121,7 @@ describe('Registration, Login, and KYC Flow', () => {
       code: undefined,
     });
 
-    const { default: LoginPage } = await import('@/app/(public)/login/page');
+    const { default: LoginPage } = await import('@/app/(auth)/login/page');
     renderWithTheme(<LoginPage />);
 
     const identifierInput = screen.getByLabelText(/email atau username/i);

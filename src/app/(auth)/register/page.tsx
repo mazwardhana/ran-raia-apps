@@ -10,6 +10,7 @@ import { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 
+import { AuthShell } from '@/components/auth/AuthShell';
 import { registerSchema } from '@/lib/validation';
 
 type RegisterFormData = z.infer<typeof registerSchema>;
@@ -78,22 +79,7 @@ export default function RegisterPage() {
   };
 
   return (
-    <Stack
-      maw={480}
-      mx="auto"
-      py="xl"
-      px="md"
-      style={{ minHeight: '100vh', justifyContent: 'center' }}
-    >
-      <Stack gap="xs" mb="md">
-        <Text size="xl" fw={700}>
-          Daftar Akun
-        </Text>
-        <Text size="sm" c="dimmed">
-          Buat akun baru untuk mulai berinvestasi
-        </Text>
-      </Stack>
-
+    <AuthShell title="Daftar Akun" subtitle="Buat akun baru untuk mulai berinvestasi">
       <form onSubmit={handleSubmit(onSubmit)}>
         <Stack gap="md">
           <TextInput
@@ -156,6 +142,6 @@ export default function RegisterPage() {
           </Text>
         </Stack>
       </form>
-    </Stack>
+    </AuthShell>
   );
 }
